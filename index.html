@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>플랜두씨 다이어리 — 계획 · 실제로 한 일 · 돌아보기</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#fff; --ink:#111827; --muted:#6b7280; --line:#e5e7eb;
+    --accent:#2563eb; --accent-ink:#1d4ed8;
+    --plan:#4f46e5; --do:#059669; --see:#b45309;
+    --danger:#dc2626; --warn:#d97706; --ok:#059669;
+    --chip:#f3f4f6;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",Roboto,sans-serif;
+    background:var(--bg);color:var(--ink);line-height:1.55;padding:16px;font-size:15px;
+  }
+  .wrap{max-width:1040px;margin:0 auto}
+
+  /* ---------- 공개 안내 (T06-C82) ---------- */
+  .notice{
+    background:#fffbeb;border:1px solid #fcd34d;border-left:4px solid #f59e0b;
+    border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:.9rem;color:#78350f;
+  }
+  .notice b{display:block;margin-bottom:2px}
+
+  header.top{
+    display:flex;justify-content:space-between;align-items:center;gap:12px;
+    flex-wrap:wrap;margin-bottom:16px;
+  }
+  header.top h1{font-size:1.3rem;letter-spacing:-.02em}
+  header.top .sub{font-size:.82rem;color:var(--muted);margin-top:2px}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
+  .card > h2{
+    font-size:1rem;margin-bottom:12px;display:flex;align-items:center;gap:8px;
+    padding-bottom:8px;border-bottom:1px solid var(--line);
+  }
+  .tagline{font-size:.8rem;color:var(--muted);font-weight:400}
+
+  label{display:block;font-size:.8rem;font-weight:600;color:#374151;margin-bottom:4px}
+  input,select,textarea{
+    width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;
+    font-size:.9rem;font-family:inherit;background:#fff;color:var(--ink);
+  }
+  input:focus,select:focus,textarea:focus{outline:2px solid #bfdbfe;outline-offset:-1px;border-color:var(--accent)}
+  textarea{resize:vertical}
+  .fg{margin-bottom:10px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+
+  button{font-family:inherit;cursor:pointer;border-radius:6px;font-weight:600;border:1px solid transparent}
+  .btn{background:var(--accent);color:#fff;padding:8px 14px;font-size:.88rem}
+  .btn:hover{background:var(--accent-ink)}
+  .btn-ghost{background:#fff;color:#374151;border-color:var(--line);padding:6px 12px;font-size:.82rem}
+  .btn-ghost:hover{background:#f9fafb}
+  .btn-sm{padding:4px 9px;font-size:.78rem;background:#fff;color:#374151;border-color:var(--line)}
+  .btn-sm:hover{background:#f9fafb}
+  .btn-danger{background:#fff;color:var(--danger);border-color:#fecaca;padding:4px 9px;font-size:.78rem}
+  .btn-danger:hover{background:#fef2f2}
+  button:disabled{opacity:.5;cursor:not-allowed}
+
+  .pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:.72rem;font-weight:600;white-space:nowrap}
+  .p-HIGH{background:#fee2e2;color:#991b1b}
+  .p-MEDIUM{background:#fef3c7;color:#92400e}
+  .p-LOW{background:#e0e7ff;color:#3730a3}
+  .pill-done{background:#d1fae5;color:#065f46}
+  .pill-late{background:#fee2e2;color:#991b1b}
+  .pill-block{background:#fed7aa;color:#9a3412}
+  .tag{background:var(--chip);color:#4b5563;padding:1px 7px;border-radius:4px;font-size:.72rem;margin-right:4px}
+
+  /* ---------- 계획 ---------- */
+  .plan-item{border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:8px;cursor:pointer;background:#fff}
+  .plan-item:hover{border-color:#c7d2fe;background:#fafaff}
+  .plan-item.active{border-color:var(--plan);border-width:2px;padding:11px;background:#f5f3ff}
+  .plan-item h3{font-size:.98rem;margin-bottom:4px}
+  .plan-meta{font-size:.78rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:6px}
+  .carried{
+    font-size:.78rem;background:#ecfdf5;border-left:3px solid var(--ok);
+    padding:5px 9px;border-radius:0 4px 4px 0;margin-top:8px;color:#065f46;
+  }
+
+  /* ---------- 할 일 ---------- */
+  .toolbar{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:10px}
+  .sort-note{
+    font-size:.78rem;color:var(--muted);background:var(--chip);
+    padding:6px 10px;border-radius:6px;margin-bottom:10px;
+  }
+  .sort-note b{color:#374151}
+
+  .task{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:6px;background:#fff}
+  .task.done{background:#f9fafb;border-color:#e5e7eb}
+  .task.done .task-text{text-decoration:line-through;color:var(--muted)}
+  .task-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .task-text{font-size:.92rem;font-weight:500;word-break:break-word}
+  .task-meta{font-size:.76rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:6px;align-items:center}
+  .task-acts{display:flex;gap:4px;flex-wrap:wrap;flex-shrink:0}
+
+  .logs{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)}
+  .log{font-size:.78rem;color:#4b5563;padding:5px 8px;background:#f9fafb;border-radius:5px;margin-bottom:4px}
+  .log .blk{color:#9a3412;display:block;margin-top:2px}
+
+  /* ---------- 집계 ---------- */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:8px;margin-bottom:12px}
+  .stat{
+    border:1px solid var(--line);border-radius:8px;padding:10px;text-align:center;
+    background:#fff;cursor:pointer;transition:.12s;
+  }
+  .stat:hover{border-color:var(--accent);background:#eff6ff;transform:translateY(-1px)}
+  .stat .n{font-size:1.5rem;font-weight:700;line-height:1.2}
+  .stat .l{font-size:.75rem;color:var(--muted);margin-top:2px}
+  .stat .hint{font-size:.68rem;color:#9ca3af;margin-top:3px}
+  .hours{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+  .hour{border:1px solid var(--line);border-radius:8px;padding:10px;text-align:center;background:#fff}
+  .hour .n{font-size:1.15rem;font-weight:700}
+  .hour .l{font-size:.75rem;color:var(--muted)}
+
+  /* ---------- 모달 ---------- */
+  .modal-bg{
+    position:fixed;inset:0;background:rgba(17,24,39,.5);display:none;
+    align-items:center;justify-content:center;padding:16px;z-index:50;
+  }
+  .modal-bg.open{display:flex}
+  .modal{background:#fff;border-radius:12px;padding:20px;max-width:520px;width:100%;max-height:88vh;overflow-y:auto}
+  .modal h3{font-size:1.02rem;margin-bottom:4px}
+  .modal .msub{font-size:.8rem;color:var(--muted);margin-bottom:14px}
+  .modal-acts{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+
+  .empty{text-align:center;color:var(--muted);font-size:.87rem;padding:24px 12px}
+  .err{
+    background:#fef2f2;border:1px solid #fecaca;color:#991b1b;
+    padding:10px 12px;border-radius:6px;font-size:.85rem;margin-bottom:10px;
+  }
+  .toast{
+    position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+    background:#111827;color:#fff;padding:10px 18px;border-radius:8px;font-size:.87rem;
+    z-index:99;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;text-align:center;
+  }
+  .toast.show{opacity:1}
+  .toast.bad{background:#991b1b}
+  .loading{color:var(--muted);font-size:.85rem;padding:16px;text-align:center}
+
+  .hist{font-size:.82rem;border-left:3px solid var(--line);padding:8px 12px;margin-bottom:8px;background:#f9fafb}
+  .hist .when{font-size:.74rem;color:var(--muted);margin-bottom:3px}
+
+  @media(max-width:640px){
+    body{padding:10px}
+    .task-head{flex-direction:column}
+    .hours{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ========== 공개 안내 (T06-C82) ========== -->
+  <div class="notice">
+    <b>⚠️ 공개 안내</b>
+    지금은 로그인이 없어 링크를 아는 사람은 누구나 볼 수 있습니다. 남이 봐도 괜찮은 내용만 넣으세요.
+  </div>
+
+  <header class="top">
+    <div>
+      <h1>📔 플랜두씨 다이어리</h1>
+      <div class="sub">계획(Plan) → 실제로 한 일(Do) → 돌아보기(See) · 모든 자료는 서버 데이터베이스에 저장됩니다</div>
+    </div>
+    <button class="btn-ghost" onclick="exportAll()">📥 내 자료 전체 내보내기 (.json)</button>
+  </header>
+
+  <div id="global-err"></div>
+
+  <!-- ========== 1. 계획 ========== -->
+  <div class="card">
+    <h2>
+      <span style="color:var(--plan)">1️⃣ PLAN</span> 계획
+      <span class="tagline">— 기간 · 우선순위 · 성공 기준 · 예상 시간</span>
+      <button class="btn-sm" style="margin-left:auto" onclick="openPlanModal()">+ 새 계획</button>
+    </h2>
+    <div id="plan-list"><div class="loading">불러오는 중…</div></div>
+  </div>
+
+  <!-- ========== 2. 할 일 ========== -->
+  <div class="card" id="task-card" style="display:none">
+    <h2>
+      <span style="color:var(--do)">2️⃣ DO</span> 할 일과 실행 기록
+      <span class="tagline" id="task-plan-label"></span>
+      <button class="btn-sm" style="margin-left:auto" onclick="openTaskModal()">+ 새 할 일</button>
+    </h2>
+
+    <div class="toolbar">
+      <input type="search" id="f-q" placeholder="🔍 내용·태그 검색" oninput="debouncedLoadTasks()">
+      <select id="f-status" onchange="loadTasks()">
+        <option value="">상태 — 전체</option>
+        <option value="todo">진행 중만</option>
+        <option value="done">완료만</option>
+        <option value="delayed">지연된 것만</option>
+        <option value="blocked">막힌 것만</option>
+      </select>
+      <select id="f-priority" onchange="loadTasks()">
+        <option value="">우선순위 — 전체</option>
+        <option value="HIGH">높음</option>
+        <option value="MEDIUM">보통</option>
+        <option value="LOW">낮음</option>
+      </select>
+      <select id="f-sort" onchange="loadTasks()">
+        <option value="created_desc">만든 날짜 최신순</option>
+        <option value="created_asc">만든 날짜 오래된순</option>
+        <option value="due_asc">마감일 빠른순</option>
+        <option value="due_desc">마감일 늦은순</option>
+        <option value="priority_desc">우선순위 높은순</option>
+        <option value="priority_asc">우선순위 낮은순</option>
+        <option value="estimated_desc">예상 시간 많은순</option>
+        <option value="estimated_asc">예상 시간 적은순</option>
+      </select>
+    </div>
+
+    <!-- 정렬 기준을 화면에 밝혀 둔다 (T06-C20) -->
+    <div class="sort-note" id="sort-note"></div>
+
+    <div id="task-list"></div>
+  </div>
+
+  <!-- ========== 3. 돌아보기 ========== -->
+  <div class="card" id="see-card" style="display:none">
+    <h2>
+      <span style="color:var(--see)">3️⃣ SEE</span> 돌아보기
+      <span class="tagline">— 숫자를 누르면 그 숫자가 나온 기록으로 갑니다</span>
+    </h2>
+    <div id="summary-area"><div class="loading">집계 중…</div></div>
+
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line)">
+      <h3 style="font-size:.92rem;margin-bottom:10px">회고 남기기</h3>
+      <form id="retro-form" onsubmit="saveRetro(event)">
+        <div class="grid">
+          <div class="fg">
+            <label>달성 평가</label>
+            <select id="r-status">
+              <option value="SUCCESS">성공</option>
+              <option value="PARTIAL" selected>부분 성공</option>
+              <option value="FAIL">미달</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label>돌아보는 기간 — 시작</label>
+            <input type="date" id="r-start" required>
+          </div>
+          <div class="fg">
+            <label>돌아보는 기간 — 끝</label>
+            <input type="date" id="r-end" required>
+          </div>
+        </div>
+        <div class="fg">
+          <label>무엇이 예상과 달랐나</label>
+          <textarea id="r-reflection" rows="2" placeholder="예: 자료 조사에 잡은 시간보다 두 배가 걸렸다. 참고 문서를 먼저 모아두지 않아서였다."></textarea>
+        </div>
+        <div class="fg">
+          <label>다음 계획으로 넘길 고칠 점 한 줄 <span style="color:var(--danger)">*</span></label>
+          <input type="text" id="r-next" required placeholder="예: 조사가 필요한 할 일은 예상 시간을 1.5배로 잡는다">
+        </div>
+        <button type="submit" class="btn">돌아보기 저장</button>
+      </form>
+    </div>
+
+    <div id="retro-list" style="margin-top:16px"></div>
+  </div>
+</div>
+
+<!-- ========== 모달: 계획 ========== -->
+<div class="modal-bg" id="plan-modal" onclick="if(event.target===this)closeModal('plan-modal')">
+  <div class="modal">
+    <h3 id="plan-modal-title">새 계획</h3>
+    <div class="msub" id="plan-modal-sub">지금 실제로 하고 있는 일 하나를 계획으로 옮겨 적으세요.</div>
+    <div id="plan-modal-err"></div>
+    <form id="plan-form" onsubmit="savePlan(event)">
+      <input type="hidden" id="p-id">
+      <input type="hidden" id="p-from-retro">
+      <div class="fg">
+        <label>계획 제목 <span style="color:var(--danger)">*</span></label>
+        <input type="text" id="p-title" required maxlength="200" placeholder="예: ALEPH 과제 6 플랜두씨 다이어리 완성">
+      </div>
+      <div class="grid">
+        <div class="fg"><label>시작일 <span style="color:var(--danger)">*</span></label><input type="date" id="p-start" required></div>
+        <div class="fg"><label>종료일 <span style="color:var(--danger)">*</span></label><input type="date" id="p-end" required></div>
+      </div>
+      <div class="grid">
+        <div class="fg">
+          <label>우선순위</label>
+          <select id="p-priority"><option value="HIGH">높음</option><option value="MEDIUM" selected>보통</option><option value="LOW">낮음</option></select>
+        </div>
+        <div class="fg"><label>예상 시간 (시간)</label><input type="number" id="p-hours" step="0.5" min="0" value="0"></div>
+      </div>
+      <div class="fg">
+        <label>성공 기준 <span style="color:var(--danger)">*</span></label>
+        <textarea id="p-success" rows="2" required maxlength="1000" placeholder="예: 통과 기준 전 항목이 배포된 주소에서 확인된다"></textarea>
+      </div>
+      <div class="modal-acts">
+        <button type="button" class="btn-ghost" onclick="closeModal('plan-modal')">취소</button>
+        <button type="submit" class="btn" id="p-submit">저장</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ========== 모달: 할 일 ========== -->
+<div class="modal-bg" id="task-modal" onclick="if(event.target===this)closeModal('task-modal')">
+  <div class="modal">
+    <h3 id="task-modal-title">새 할 일</h3>
+    <div class="msub">마감일 · 우선순위 · 태그 · 예상 시간을 함께 남깁니다.</div>
+    <div id="task-modal-err"></div>
+    <form id="task-form" onsubmit="saveTask(event)">
+      <input type="hidden" id="t-id">
+      <div class="fg">
+        <label>할 일 내용 <span style="color:var(--danger)">*</span></label>
+        <input type="text" id="t-content" required maxlength="500" placeholder="예: 집계 API 통과 기준대로 구현">
+      </div>
+      <div class="grid">
+        <div class="fg"><label>마감일</label><input type="date" id="t-due"></div>
+        <div class="fg">
+          <label>우선순위</label>
+          <select id="t-priority"><option value="HIGH">높음</option><option value="MEDIUM" selected>보통</option><option value="LOW">낮음</option></select>
+        </div>
+        <div class="fg"><label>예상 시간 (시간)</label><input type="number" id="t-hours" step="0.5" min="0" value="0"></div>
+      </div>
+      <div class="fg">
+        <label>태그 (쉼표로 구분)</label>
+        <input type="text" id="t-tags" placeholder="예: 백엔드, 집계, 급함">
+      </div>
+      <div class="modal-acts">
+        <button type="button" class="btn-ghost" onclick="closeModal('task-modal')">취소</button>
+        <button type="submit" class="btn" id="t-submit">저장</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ========== 모달: 실행 기록 ========== -->
+<div class="modal-bg" id="log-modal" onclick="if(event.target===this)closeModal('log-modal')">
+  <div class="modal">
+    <h3>실제로 한 일 기록</h3>
+    <div class="msub" id="log-modal-sub"></div>
+    <div id="log-modal-err"></div>
+    <form id="log-form" onsubmit="saveLog(event)">
+      <input type="hidden" id="l-task-id">
+      <input type="hidden" id="l-key">
+      <div class="grid">
+        <div class="fg"><label>시작 시각 <span style="color:var(--danger)">*</span></label><input type="datetime-local" id="l-start" required></div>
+        <div class="fg"><label>끝난 시각 <span style="color:var(--danger)">*</span></label><input type="datetime-local" id="l-end" required></div>
+      </div>
+      <div class="fg">
+        <label>실제로 걸린 시간 (시간) <span style="color:var(--danger)">*</span></label>
+        <input type="number" id="l-hours" step="0.25" min="0" required value="1">
+        <div style="font-size:.76rem;color:var(--muted);margin-top:4px">
+          시작·끝 시각을 넣으면 자동으로 채워집니다. 실제 집중한 시간이 다르면 직접 고치세요.
+        </div>
+      </div>
+      <div class="fg">
+        <label>막혔던 이유 (없으면 비워 두세요)</label>
+        <textarea id="l-blocker" rows="2" placeholder="예: 시간대 처리 때문에 날짜가 하루 밀려서 원인 찾는 데 오래 걸림"></textarea>
+      </div>
+      <div class="fg">
+        <label style="display:flex;align-items:center;gap:6px;font-weight:500">
+          <input type="checkbox" id="l-complete" style="width:auto" checked>
+          이 기록과 함께 할 일을 완료로 바꾸기
+        </label>
+      </div>
+      <div class="modal-acts">
+        <button type="button" class="btn-ghost" onclick="closeModal('log-modal')">취소</button>
+        <button type="submit" class="btn" id="l-submit">기록 저장</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ========== 모달: 계획 수정 이력 ========== -->
+<div class="modal-bg" id="hist-modal" onclick="if(event.target===this)closeModal('hist-modal')">
+  <div class="modal">
+    <h3>계획 수정 이력</h3>
+    <div class="msub">계획을 고쳐도 고치기 전 내용이 그대로 남습니다.</div>
+    <div id="hist-body"><div class="loading">불러오는 중…</div></div>
+    <div class="modal-acts"><button class="btn-ghost" onclick="closeModal('hist-modal')">닫기</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   플랜두씨 다이어리 — 화면 로직
+   모든 자료는 /api/* 를 거쳐 서버 데이터베이스에 저장된다.
+   브라우저에는 아무것도 보관하지 않으므로 새로고침하면 서버 값이 그대로 다시 온다.
+   ============================================================ */
+
+/* ---------- 화면에 글자를 넣을 때는 반드시 이 함수를 거친다 (T06-C57) ----------
+   저장된 값에 <script> 같은 글자가 들어 있어도 실행되지 않고 글자 그대로 보인다. */
+function esc(v){
+  if(v==null) return '';
+  return String(v).replace(/[&<>"'`=\/]/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;',
+    '`':'&#96;','=':'&#61;','/':'&#47;'
+  }[c]));
+}
+
+const state = {
+  plans: [],
+  currentPlanId: null,
+  tasks: [],
+  summary: null,
+  retros: [],
+  expandedLogs: new Set(),   // 실행 기록을 펼쳐 둔 할 일
+  drillIds: null,            // 집계 숫자를 눌러 좁혀 본 id 목록
+  drillLabel: '',
+};
+
+/* ---------- 서버와 이야기하기 ---------- */
+async function api(path, options = {}){
+  const res = await fetch(path, {
+    headers:{'Content-Type':'application/json'},
+    ...options,
+  });
+  let data = null;
+  try{ data = await res.json(); }catch{ /* 본문이 없을 수 있다 */ }
+
+  if(!res.ok){
+    const msg = data?.error?.message || `요청이 실패했습니다. (${res.status})`;
+    const err = new Error(msg);
+    err.code = data?.error?.code;
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
+
+function toast(msg, bad=false){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (bad ? ' bad' : '');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=>{ t.className='toast'; }, 2600);
+}
+
+function showErr(containerId, msg){
+  const el = document.getElementById(containerId);
+  if(!el) return;
+  el.innerHTML = msg ? `<div class="err">⚠️ ${esc(msg)}</div>` : '';
+}
+
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+
+/* 서울 기준 오늘 (화면에서 기본값을 채울 때만 쓴다. 지연 판정은 서버가 한다.) */
+function seoulToday(){
+  return new Date().toLocaleDateString('en-CA', {timeZone:'Asia/Seoul'});
+}
+
+function fmtDateTime(iso){
+  if(!iso) return '—';
+  return new Date(iso).toLocaleString('ko-KR', {
+    timeZone:'Asia/Seoul', year:'numeric', month:'2-digit', day:'2-digit',
+    hour:'2-digit', minute:'2-digit'
+  });
+}
+
+const PRIORITY_LABEL = {HIGH:'높음', MEDIUM:'보통', LOW:'낮음'};
+
+/* ============================================================
+   1. 계획
+   ============================================================ */
+async function loadPlans(){
+  try{
+    const data = await api('/api/plans');
+    state.plans = data.plans || [];
+    renderPlans();
+
+    // 고르지 않았다면 첫 계획을 자동으로 편다.
+    if(!state.currentPlanId && state.plans.length > 0){
+      selectPlan(state.plans[0].id);
+    } else if(state.plans.length === 0){
+      document.getElementById('task-card').style.display = 'none';
+      document.getElementById('see-card').style.display = 'none';
+    }
+  }catch(e){
+    showErr('global-err', `계획을 불러오지 못했습니다. ${e.message}`);
+    document.getElementById('plan-list').innerHTML =
+      '<div class="empty">계획을 불러오지 못했습니다. 새로고침해 보세요.</div>';
+  }
+}
+
+function renderPlans(){
+  const el = document.getElementById('plan-list');
+  if(state.plans.length === 0){
+    el.innerHTML = '<div class="empty">아직 계획이 없습니다. 지금 실제로 하고 있는 일 하나를 계획으로 옮겨 보세요.</div>';
+    return;
+  }
+
+  el.innerHTML = state.plans.map(p => `
+    <div class="plan-item ${p.id === state.currentPlanId ? 'active' : ''}" onclick="selectPlan('${esc(p.id)}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+        <div style="flex:1;min-width:0">
+          <h3>${esc(p.title)}</h3>
+          <div style="font-size:.84rem;color:#4b5563">🎯 ${esc(p.successCriteria)}</div>
+          <div class="plan-meta">
+            <span>📅 ${esc(p.startDate)} ~ ${esc(p.endDate)}</span>
+            <span class="pill p-${esc(p.priority)}">${esc(PRIORITY_LABEL[p.priority] || p.priority)}</span>
+            <span>⏱️ 예상 ${Number(p.estimatedHours)}시간</span>
+            <span>📝 할 일 ${Number(p.taskCount)}개 · 완료 ${Number(p.completedCount)}개</span>
+          </div>
+          ${p.carriedFromActionItem ? `<div class="carried">↩️ 지난 돌아보기에서 넘어온 고칠 점: ${esc(p.carriedFromActionItem)}</div>` : ''}
+        </div>
+        <div class="task-acts" onclick="event.stopPropagation()">
+          <button class="btn-sm" onclick="showHistory('${esc(p.id)}')">수정 이력</button>
+          <button class="btn-sm" onclick="openPlanModal('${esc(p.id)}')">수정</button>
+          <button class="btn-danger" onclick="deletePlan('${esc(p.id)}')">삭제</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function selectPlan(id){
+  state.currentPlanId = id;
+  state.drillIds = null;
+  state.expandedLogs.clear();
+  renderPlans();
+
+  const plan = state.plans.find(p => p.id === id);
+  document.getElementById('task-card').style.display = '';
+  document.getElementById('see-card').style.display = '';
+  document.getElementById('task-plan-label').textContent = plan ? `— ${plan.title}` : '';
+
+  // 회고 기간 기본값을 계획 기간으로 채워 둔다.
+  if(plan){
+    document.getElementById('r-start').value = plan.startDate;
+    document.getElementById('r-end').value = plan.endDate;
+  }
+
+  loadTasks();
+  loadSummary();
+  loadRetros();
+}
+
+function openPlanModal(id = null, fromRetroId = null){
+  showErr('plan-modal-err', '');
+  document.getElementById('plan-form').reset();
+  document.getElementById('p-id').value = id || '';
+  document.getElementById('p-from-retro').value = fromRetroId || '';
+
+  if(id){
+    const p = state.plans.find(x => x.id === id);
+    if(!p) return;
+    document.getElementById('plan-modal-title').textContent = '계획 수정';
+    document.getElementById('plan-modal-sub').textContent =
+      '고치기 전 계획은 수정 이력에 그대로 남습니다.';
+    document.getElementById('p-title').value = p.title;
+    document.getElementById('p-start').value = p.startDate;
+    document.getElementById('p-end').value = p.endDate;
+    document.getElementById('p-priority').value = p.priority;
+    document.getElementById('p-hours').value = p.estimatedHours;
+    document.getElementById('p-success').value = p.successCriteria;
+  }else{
+    document.getElementById('plan-modal-title').textContent = '새 계획';
+    document.getElementById('plan-modal-sub').textContent = fromRetroId
+      ? '돌아보기에서 정한 고칠 점을 이어받아 다음 계획을 세웁니다.'
+      : '지금 실제로 하고 있는 일 하나를 계획으로 옮겨 적으세요.';
+    const today = seoulToday();
+    document.getElementById('p-start').value = today;
+    document.getElementById('p-end').value = today;
+    document.getElementById('p-hours').value = 0;
+  }
+  openModal('plan-modal');
+}
+
+async function savePlan(e){
+  e.preventDefault();
+  const btn = document.getElementById('p-submit');
+  btn.disabled = true;
+  showErr('plan-modal-err', '');
+
+  const id = document.getElementById('p-id').value;
+  const fromRetro = document.getElementById('p-from-retro').value;
+
+  const body = {
+    title: document.getElementById('p-title').value,
+    startDate: document.getElementById('p-start').value,
+    endDate: document.getElementById('p-end').value,
+    priority: document.getElementById('p-priority').value,
+    estimatedHours: parseFloat(document.getElementById('p-hours').value) || 0,
+    successCriteria: document.getElementById('p-success').value,
+  };
+  if(fromRetro) body.fromRetrospectiveId = fromRetro;
+
+  try{
+    if(id){
+      const r = await api(`/api/plans?id=${encodeURIComponent(id)}`, {
+        method:'PATCH', body: JSON.stringify(body)
+      });
+      toast(`계획을 고쳤습니다. 이전 내용 ${r.historyCount}건이 이력에 남아 있습니다.`);
+    }else{
+      const r = await api('/api/plans', {method:'POST', body: JSON.stringify(body)});
+      if(r.warning) toast(r.warning, true);
+      else toast('계획을 저장했습니다.');
+      state.currentPlanId = r.plan.id;
+    }
+    closeModal('plan-modal');
+    await loadPlans();
+    if(state.currentPlanId) selectPlan(state.currentPlanId);
+  }catch(err){
+    showErr('plan-modal-err', err.message);
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+async function deletePlan(id){
+  if(!confirm('이 계획과 거기 딸린 할 일을 모두 지웁니다. 계속할까요?')) return;
+  try{
+    await api(`/api/plans?id=${encodeURIComponent(id)}`, {method:'DELETE'});
+    if(state.currentPlanId === id) state.currentPlanId = null;
+    toast('계획을 지웠습니다.');
+    await loadPlans();
+  }catch(e){ toast(e.message, true); }
+}
+
+async function showHistory(id){
+  openModal('hist-modal');
+  const body = document.getElementById('hist-body');
+  body.innerHTML = '<div class="loading">불러오는 중…</div>';
+  try{
+    const data = await api(`/api/plans?id=${encodeURIComponent(id)}&history=1`);
+    const h = data.history || [];
+    if(h.length === 0){
+      body.innerHTML = '<div class="empty">아직 고친 적이 없습니다. 계획을 한 번 고치면 고치기 전 내용이 여기에 남습니다.</div>';
+      return;
+    }
+    body.innerHTML = h.map((v, i) => `
+      <div class="hist">
+        <div class="when">${esc(String(h.length - i))}번째 이전 버전 · ${esc(fmtDateTime(v.recordedAt))}에 이력으로 남음</div>
+        <div style="font-weight:600">${esc(v.title)}</div>
+        <div style="color:#4b5563;font-size:.8rem;margin-top:3px">
+          📅 ${esc(v.startDate)} ~ ${esc(v.endDate)} ·
+          우선순위 ${esc(PRIORITY_LABEL[v.priority] || v.priority)} ·
+          예상 ${Number(v.estimatedHours)}시간
+        </div>
+        <div style="font-size:.8rem;margin-top:3px">🎯 ${esc(v.successCriteria)}</div>
+      </div>
+    `).join('');
+  }catch(e){
+    body.innerHTML = `<div class="err">⚠️ ${esc(e.message)}</div>`;
+  }
+}
+
+/* ============================================================
+   2. 할 일
+   ============================================================ */
+let _taskTimer = null;
+function debouncedLoadTasks(){
+  clearTimeout(_taskTimer);
+  _taskTimer = setTimeout(loadTasks, 280);
+}
+
+async function loadTasks(){
+  if(!state.currentPlanId) return;
+  const el = document.getElementById('task-list');
+  el.innerHTML = '<div class="loading">불러오는 중…</div>';
+
+  const params = new URLSearchParams();
+  const sort = document.getElementById('f-sort').value;
+
+  if(state.drillIds){
+    // 집계 숫자를 눌러 좁혀 본 상태 — id 목록으로만 조회한다.
+    params.set('ids', state.drillIds.join(','));
+    params.set('sort', sort);
+  }else{
+    params.set('planId', state.currentPlanId);
+    params.set('sort', sort);
+    const q = document.getElementById('f-q').value.trim();
+    if(q) params.set('q', q);
+    const st = document.getElementById('f-status').value;
+    if(st) params.set('status', st);
+    const pr = document.getElementById('f-priority').value;
+    if(pr) params.set('priority', pr);
+  }
+
+  try{
+    const data = await api('/api/tasks?' + params.toString());
+    state.tasks = data.tasks || [];
+    renderSortNote(data);
+    renderTasks();
+  }catch(e){
+    el.innerHTML = `<div class="err">⚠️ 할 일을 불러오지 못했습니다. ${esc(e.message)}</div>`;
+  }
+}
+
+/* 정렬·거르기 기준을 화면에 밝혀 둔다 (T06-C20) */
+function renderSortNote(data){
+  const parts = [];
+  parts.push(`정렬 기준: <b>${esc(data.sortLabel || '만든 날짜 최신순')}</b>`);
+  parts.push('같은 값이면 <b>만든 날짜 최신순 → id 오름차순</b>으로 정합니다');
+
+  if(state.drillIds){
+    parts.push(`<b style="color:var(--accent)">『${esc(state.drillLabel)}』 ${state.drillIds.length}건만 보는 중</b>
+      <button class="btn-sm" style="margin-left:6px" onclick="clearDrill()">전체 보기로</button>`);
+  }else{
+    const f = data.appliedFilters || {};
+    const applied = [];
+    if(f.q) applied.push(`검색어 “${esc(f.q)}”`);
+    if(f.status) applied.push(`상태 ${esc({todo:'진행 중',done:'완료',delayed:'지연',blocked:'막힘'}[f.status] || f.status)}`);
+    if(f.priority) applied.push(`우선순위 ${esc(PRIORITY_LABEL[f.priority] || f.priority)}`);
+    if(f.tag) applied.push(`태그 ${esc(f.tag)}`);
+    if(applied.length) parts.push(`거르기: <b>${applied.join(' · ')}</b>`);
+  }
+  if(data.today) parts.push(`지연 판정 기준일(서울): <b>${esc(data.today)}</b>`);
+
+  document.getElementById('sort-note').innerHTML = parts.join(' &nbsp;|&nbsp; ');
+}
+
+function renderTasks(){
+  const el = document.getElementById('task-list');
+  if(state.tasks.length === 0){
+    el.innerHTML = state.drillIds
+      ? '<div class="empty">해당하는 기록이 없습니다.</div>'
+      : '<div class="empty">아직 할 일이 없습니다. 이 계획을 이루려면 실제로 무엇을 해야 하는지 적어 보세요.</div>';
+    return;
+  }
+
+  el.innerHTML = state.tasks.map(t => {
+    const expanded = state.expandedLogs.has(t.id);
+    return `
+    <div class="task ${t.isCompleted ? 'done' : ''}" id="task-${esc(t.id)}">
+      <div class="task-head">
+        <div style="flex:1;min-width:0">
+          <div class="task-text">${t.isCompleted ? '✅ ' : '⬜ '}${esc(t.content)}</div>
+          <div class="task-meta">
+            <span class="pill p-${esc(t.priority)}">${esc(PRIORITY_LABEL[t.priority] || t.priority)}</span>
+            ${t.dueDate ? `<span>📅 마감 ${esc(t.dueDate)}</span>` : '<span style="color:#9ca3af">마감일 없음</span>'}
+            ${t.isDelayed ? '<span class="pill pill-late">지연</span>' : ''}
+            ${t.hasBlocker ? '<span class="pill pill-block">막힘</span>' : ''}
+            <span>⏱️ 예상 ${Number(t.estimatedHours)}h · 실제 ${Number(t.actualHours)}h</span>
+            ${(t.tags || []).map(g => `<span class="tag">#${esc(g)}</span>`).join('')}
+          </div>
+        </div>
+        <div class="task-acts">
+          <button class="btn-sm" onclick="openLogModal('${esc(t.id)}')">＋ 실행 기록</button>
+          ${t.isCompleted
+            ? `<button class="btn-sm" onclick="toggleTask('${esc(t.id)}','reopen')">되돌리기</button>`
+            : `<button class="btn-sm" onclick="toggleTask('${esc(t.id)}','complete')">완료</button>`}
+          <button class="btn-sm" onclick="openTaskModal('${esc(t.id)}')">수정</button>
+          <button class="btn-danger" onclick="deleteTask('${esc(t.id)}')">삭제</button>
+        </div>
+      </div>
+      ${t.logCount > 0 ? `
+        <div class="logs">
+          <button class="btn-sm" onclick="toggleLogs('${esc(t.id)}')">
+            ${expanded ? '▼' : '▶'} 실행 기록 ${Number(t.logCount)}건
+          </button>
+          <div id="logs-${esc(t.id)}" style="margin-top:6px">${expanded ? '<div class="loading">불러오는 중…</div>' : ''}</div>
+        </div>` : ''}
+    </div>`;
+  }).join('');
+
+  // 펼쳐 둔 기록은 다시 그린 뒤에도 그대로 펼쳐 둔다.
+  state.expandedLogs.forEach(id => {
+    if(state.tasks.some(t => t.id === id)) fetchLogs(id);
+  });
+}
+
+function openTaskModal(id = null){
+  if(!state.currentPlanId){ toast('먼저 계획을 고르세요.', true); return; }
+  showErr('task-modal-err', '');
+  document.getElementById('task-form').reset();
+  document.getElementById('t-id').value = id || '';
+
+  if(id){
+    const t = state.tasks.find(x => x.id === id);
+    if(!t) return;
+    document.getElementById('task-modal-title').textContent = '할 일 수정';
+    document.getElementById('t-content').value = t.content;
+    document.getElementById('t-due').value = t.dueDate || '';
+    document.getElementById('t-priority').value = t.priority;
+    document.getElementById('t-hours').value = t.estimatedHours;
+    document.getElementById('t-tags').value = (t.tags || []).join(', ');
+  }else{
+    document.getElementById('task-modal-title').textContent = '새 할 일';
+    document.getElementById('t-hours').value = 0;
+  }
+  openModal('task-modal');
+}
+
+async function saveTask(e){
+  e.preventDefault();
+  const btn = document.getElementById('t-submit');
+  btn.disabled = true;
+  showErr('task-modal-err', '');
+
+  const id = document.getElementById('t-id').value;
+  const body = {
+    planId: state.currentPlanId,
+    content: document.getElementById('t-content').value,
+    dueDate: document.getElementById('t-due').value || null,
+    priority: document.getElementById('t-priority').value,
+    estimatedHours: parseFloat(document.getElementById('t-hours').value) || 0,
+    tags: document.getElementById('t-tags').value,
+  };
+
+  try{
+    if(id){
+      await api(`/api/tasks?id=${encodeURIComponent(id)}`, {method:'PATCH', body: JSON.stringify(body)});
+      toast('할 일을 고쳤습니다.');
+    }else{
+      await api('/api/tasks', {method:'POST', body: JSON.stringify(body)});
+      toast('할 일을 만들었습니다.');
+    }
+    closeModal('task-modal');
+    await refreshAfterChange();
+  }catch(err){
+    showErr('task-modal-err', err.message);
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+async function toggleTask(id, action){
+  try{
+    const r = await api(`/api/tasks?id=${encodeURIComponent(id)}`, {
+      method:'PATCH', body: JSON.stringify({action})
+    });
+    if(r.alreadyCompleted) toast('이미 완료된 할 일입니다. 완료는 한 번만 기록됩니다.');
+    else toast(action === 'complete' ? '완료로 바꿨습니다.' : '진행 중으로 되돌렸습니다.');
+    await refreshAfterChange();
+  }catch(e){ toast(e.message, true); }
+}
+
+async function deleteTask(id){
+  if(!confirm('이 할 일을 지울까요? 딸린 실행 기록도 함께 지워집니다.')) return;
+  try{
+    await api(`/api/tasks?id=${encodeURIComponent(id)}`, {method:'DELETE'});
+    toast('할 일을 지웠습니다.');
+    await refreshAfterChange();
+  }catch(e){ toast(e.message, true); }
+}
+
+/* ============================================================
+   3. 실행 기록 (Do)
+   ============================================================ */
+function toggleLogs(taskId){
+  if(state.expandedLogs.has(taskId)) state.expandedLogs.delete(taskId);
+  else state.expandedLogs.add(taskId);
+  renderTasks();
+}
+
+async function fetchLogs(taskId){
+  const box = document.getElementById(`logs-${taskId}`);
+  if(!box) return;
+  try{
+    const data = await api(`/api/task-logs?taskId=${encodeURIComponent(taskId)}`);
+    const logs = data.logs || [];
+    if(logs.length === 0){ box.innerHTML = '<div style="font-size:.78rem;color:#9ca3af">기록이 없습니다.</div>'; return; }
+    box.innerHTML = logs.map(l => `
+      <div class="log">
+        🕘 ${esc(fmtDateTime(l.startedAt))} → ${esc(fmtDateTime(l.endedAt))}
+        · 실제 <b>${Number(l.actualHours)}시간</b>
+        ${l.blockerReason ? `<span class="blk">🚧 막힘: ${esc(l.blockerReason)}</span>` : ''}
+      </div>
+    `).join('');
+  }catch(e){
+    box.innerHTML = `<div style="font-size:.78rem;color:var(--danger)">기록을 불러오지 못했습니다.</div>`;
+  }
+}
+
+function openLogModal(taskId){
+  const t = state.tasks.find(x => x.id === taskId);
+  showErr('log-modal-err', '');
+  document.getElementById('log-form').reset();
+  document.getElementById('l-task-id').value = taskId;
+  document.getElementById('log-modal-sub').textContent = t ? `할 일: ${t.content}` : '';
+
+  // 같은 요청을 알아보는 키를 모달을 열 때 한 번만 만든다.
+  // 저장 버튼을 연달아 눌러도 같은 키가 가므로, 두 번째는 데이터베이스가 막는다. (T06-C21)
+  document.getElementById('l-key').value =
+    (crypto.randomUUID ? crypto.randomUUID() : 'k-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+
+  // 기본값: 한 시간 전 ~ 지금
+  const now = new Date();
+  const before = new Date(now.getTime() - 3600_000);
+  document.getElementById('l-start').value = toLocalInput(before);
+  document.getElementById('l-end').value = toLocalInput(now);
+  document.getElementById('l-hours').value = 1;
+  document.getElementById('l-complete').checked = t ? !t.isCompleted : true;
+
+  openModal('log-modal');
+}
+
+function toLocalInput(d){
+  const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/* 시작·끝 시각을 넣으면 걸린 시간을 자동으로 채운다. */
+function syncLogHours(){
+  const s = document.getElementById('l-start').value;
+  const e = document.getElementById('l-end').value;
+  if(!s || !e) return;
+  const diff = (new Date(e) - new Date(s)) / 3600_000;
+  if(diff >= 0) document.getElementById('l-hours').value = Math.round(diff * 4) / 4;
+}
+
+async function saveLog(e){
+  e.preventDefault();
+  const btn = document.getElementById('l-submit');
+  btn.disabled = true;
+  showErr('log-modal-err', '');
+
+  const taskId = document.getElementById('l-task-id').value;
+  const body = {
+    taskId,
+    startedAt: new Date(document.getElementById('l-start').value).toISOString(),
+    endedAt: new Date(document.getElementById('l-end').value).toISOString(),
+    actualHours: parseFloat(document.getElementById('l-hours').value) || 0,
+    blockerReason: document.getElementById('l-blocker').value.trim() || null,
+    idempotencyKey: document.getElementById('l-key').value,
+  };
+
+  try{
+    const r = await api('/api/task-logs', {method:'POST', body: JSON.stringify(body)});
+
+    if(r.duplicate){
+      toast('같은 기록이 이미 저장되어 있습니다. 기록은 한 건만 남습니다.');
+    }else{
+      toast('실행 기록을 저장했습니다. 계획 값은 그대로입니다.');
+    }
+
+    // 완료 처리는 별도 요청. 이미 완료면 서버가 다시 쓰지 않는다.
+    if(document.getElementById('l-complete').checked){
+      await api(`/api/tasks?id=${encodeURIComponent(taskId)}`, {
+        method:'PATCH', body: JSON.stringify({action:'complete'})
+      });
+    }
+
+    closeModal('log-modal');
+    state.expandedLogs.add(taskId);
+    await refreshAfterChange();
+  }catch(err){
+    showErr('log-modal-err', err.message);
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+/* ============================================================
+   4. 돌아보기 (See)
+   ============================================================ */
+async function loadSummary(){
+  if(!state.currentPlanId) return;
+  const el = document.getElementById('summary-area');
+  el.innerHTML = '<div class="loading">집계 중…</div>';
+  try{
+    const data = await api(`/api/summary?planId=${encodeURIComponent(state.currentPlanId)}`);
+    state.summary = data;
+    renderSummary(data);
+  }catch(e){
+    el.innerHTML = `<div class="err">⚠️ 집계를 불러오지 못했습니다. ${esc(e.message)}</div>`;
+  }
+}
+
+function renderSummary(d){
+  const c = d.counts || {};
+  const h = d.hours || {estimated:0, actual:0, diff:0};
+  const stat = (key, label, hint, color) => {
+    const item = c[key] || {value:0, taskIds:[]};
+    return `
+      <div class="stat" onclick="drillDown('${esc(key)}','${esc(label)}')" title="눌러서 이 숫자가 나온 기록 보기">
+        <div class="n" style="color:${color}">${Number(item.value)}</div>
+        <div class="l">${esc(label)}</div>
+        <div class="hint">${esc(hint)}</div>
+      </div>`;
+  };
+
+  const diff = Number(h.diff);
+  const diffColor = diff > 0 ? 'var(--danger)' : (diff < 0 ? 'var(--ok)' : 'var(--ink)');
+  const diffText = diff > 0 ? `+${diff} (예상보다 더 걸림)` : (diff < 0 ? `${diff} (예상보다 덜 걸림)` : '0 (예상과 같음)');
+
+  document.getElementById('summary-area').innerHTML = `
+    <div class="stats">
+      ${stat('plan','계획 수','딸린 할 일','var(--plan)')}
+      ${stat('completed','완료 수','지금 완료 상태','var(--ok)')}
+      ${stat('delayed','지연 수',`마감 < ${esc(d.today || '')}`,'var(--danger)')}
+      ${stat('blocked','막힘 수','막힌 이유 있음','var(--warn)')}
+    </div>
+    <div class="hours">
+      <div class="hour"><div class="n">${Number(h.estimated)}시간</div><div class="l">예상 시간 합계</div></div>
+      <div class="hour"><div class="n">${Number(h.actual)}시간</div><div class="l">실제 시간 합계</div></div>
+      <div class="hour"><div class="n" style="color:${diffColor}">${esc(diffText)}</div><div class="l">차이 (실제 − 예상)</div></div>
+    </div>
+    <div style="font-size:.78rem;color:var(--muted)">
+      지연은 완료되지 않았고 마감일이 서울 시간 기준 오늘(${esc(d.today || '')})보다 앞선 할 일만 셉니다.
+      완료한 할 일은 지연으로 세지 않습니다.
+    </div>
+  `;
+}
+
+/* 집계 숫자를 눌러 그 숫자가 나온 기록으로 간다 (T06-C83) */
+function drillDown(key, label){
+  const item = (state.summary?.counts || {})[key];
+  if(!item || !item.taskIds || item.taskIds.length === 0){
+    toast('이 숫자에 해당하는 기록이 없습니다.');
+    return;
+  }
+  state.drillIds = item.taskIds;
+  state.drillLabel = label;
+  loadTasks();
+  document.getElementById('task-card').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function clearDrill(){
+  state.drillIds = null;
+  state.drillLabel = '';
+  loadTasks();
+}
+
+async function loadRetros(){
+  if(!state.currentPlanId) return;
+  try{
+    const data = await api(`/api/retrospectives?planId=${encodeURIComponent(state.currentPlanId)}`);
+    state.retros = data.retrospectives || [];
+    renderRetros();
+  }catch(e){
+    document.getElementById('retro-list').innerHTML = '';
+  }
+}
+
+function renderRetros(){
+  const el = document.getElementById('retro-list');
+  if(state.retros.length === 0){ el.innerHTML = ''; return; }
+
+  const STATUS = {SUCCESS:'성공', PARTIAL:'부분 성공', FAIL:'미달'};
+  el.innerHTML = `
+    <h3 style="font-size:.92rem;margin-bottom:8px">지난 돌아보기</h3>
+    ${state.retros.map(r => `
+      <div class="hist">
+        <div class="when">${esc(r.periodStart)} ~ ${esc(r.periodEnd)} · ${esc(fmtDateTime(r.createdAt))}</div>
+        <div style="font-weight:600">${esc(STATUS[r.status] || r.status || '평가 없음')}</div>
+        ${r.reflection ? `<div style="font-size:.84rem;margin-top:4px">${esc(r.reflection)}</div>` : ''}
+        ${r.nextActionItem ? `
+          <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+            <div style="font-size:.84rem;color:#065f46">➡️ 고칠 점: <b>${esc(r.nextActionItem)}</b></div>
+            ${r.carriedToPlanId
+              ? `<span class="pill pill-done">다음 계획으로 넘어감</span>`
+              : `<button class="btn-sm" onclick="carryToNextPlan('${esc(r.id)}')">이 고칠 점으로 다음 계획 세우기</button>`}
+          </div>` : ''}
+      </div>
+    `).join('')}
+  `;
+}
+
+async function saveRetro(e){
+  e.preventDefault();
+  const body = {
+    planId: state.currentPlanId,
+    periodStart: document.getElementById('r-start').value,
+    periodEnd: document.getElementById('r-end').value,
+    status: document.getElementById('r-status').value,
+    reflection: document.getElementById('r-reflection').value,
+    nextActionItem: document.getElementById('r-next').value,
+  };
+  try{
+    await api('/api/retrospectives', {method:'POST', body: JSON.stringify(body)});
+    toast('돌아보기를 저장했습니다.');
+    document.getElementById('r-reflection').value = '';
+    document.getElementById('r-next').value = '';
+    await loadRetros();
+  }catch(err){ toast(err.message, true); }
+}
+
+/* 돌아보기의 고칠 점을 다음 계획으로 넘긴다 (T06-C33) */
+function carryToNextPlan(retroId){
+  const r = state.retros.find(x => x.id === retroId);
+  if(!r) return;
+  openPlanModal(null, retroId);
+  document.getElementById('p-success').value = r.nextActionItem || '';
+  document.getElementById('p-title').focus();
+  toast('고칠 점을 성공 기준에 옮겨 담았습니다. 계획을 마저 채우세요.');
+}
+
+/* ============================================================
+   내보내기 (T06-C36)
+   ============================================================ */
+async function exportAll(){
+  try{
+    const data = await api('/api/export');
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `plandosee-export-${seoulToday()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    toast('내 자료 전체를 파일 하나로 내보냈습니다.');
+  }catch(e){
+    toast(`내보내기에 실패했습니다. ${e.message}`, true);
+  }
+}
+
+/* ============================================================
+   공통
+   ============================================================ */
+async function refreshAfterChange(){
+  await Promise.all([loadTasks(), loadSummary()]);
+  // 계획 목록의 할 일 수·완료 수도 다시 센다.
+  try{
+    const data = await api('/api/plans');
+    state.plans = data.plans || [];
+    renderPlans();
+  }catch{ /* 목록 갱신 실패는 조용히 넘어간다 */ }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('l-start').addEventListener('change', syncLogHours);
+  document.getElementById('l-end').addEventListener('change', syncLogHours);
+
+  // 모달은 Esc 로도 닫는다.
+  document.addEventListener('keydown', ev => {
+    if(ev.key === 'Escape'){
+      document.querySelectorAll('.modal-bg.open').forEach(m => m.classList.remove('open'));
+    }
+  });
+
+  loadPlans();
+});
+</script>
+</body>
+</html>

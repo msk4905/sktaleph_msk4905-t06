@@ -1,0 +1,208 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PlanDoSeeDiarySchema",
+  "version": "2.0.0",
+  "database": "PostgreSQL (Vercel Postgres / Neon)",
+  "conventions": {
+    "timezone": {
+      "storage": "UTC",
+      "storageType": "TIMESTAMPTZ",
+      "displayAndJudgement": "Asia/Seoul",
+      "note": "모든 시각은 UTC 로 저장하고, 화면 표시와 '지연' 판정의 기준이 되는 '오늘'은 Asia/Seoul 기준으로 계산한다."
+    },
+    "dateOnlyFields": {
+      "type": "DATE",
+      "format": "YYYY-MM-DD",
+      "note": "start_date, end_date, due_date, period_start, period_end 는 시각 없는 날짜다. 시간대 변환을 하지 않는다."
+    },
+    "durationUnit": {
+      "unit": "hour",
+      "type": "NUMERIC(6,2)",
+      "note": "estimated_hours 와 actual_hours 는 모두 '시간' 단위이며, 저장·표시·합산·차이 계산에서 단위를 바꾸지 않는다."
+    },
+    "softDelete": {
+      "field": "deleted_at",
+      "note": "plans 와 tasks 는 물리 삭제 대신 deleted_at 에 시각을 기록한다. 모든 집계는 deleted_at IS NULL 인 행만 센다."
+    },
+    "idGeneration": {
+      "format": "<prefix>-<base36 timestamp>-<random>",
+      "examples": ["plan-m1x2y3-a1b2c3d4", "task-m1x2y3-e5f6g7h8", "log-m1x2y3-i9j0k1l2"]
+    }
+  },
+  "tables": {
+    "plans": {
+      "description": "계획. 현재 유효한 값만 담는다. 수정 전 값은 plan_history 로 옮겨진다.",
+      "primaryKey": "id",
+      "columns": {
+        "id": { "type": "TEXT", "nullable": false },
+        "title": { "type": "TEXT", "nullable": false, "label": "계획 제목" },
+        "start_date": { "type": "DATE", "nullable": false, "label": "시작일", "criterion": "T06-C04" },
+        "end_date": { "type": "DATE", "nullable": false, "label": "종료일", "criterion": "T06-C04" },
+        "priority": {
+          "type": "TEXT",
+          "nullable": false,
+          "enum": ["HIGH", "MEDIUM", "LOW"],
+          "default": "MEDIUM",
+          "label": "우선순위",
+          "criterion": "T06-C05"
+        },
+        "success_criteria": { "type": "TEXT", "nullable": false, "label": "성공 기준", "criterion": "T06-C06" },
+        "estimated_hours": { "type": "NUMERIC(6,2)", "nullable": false, "default": 0, "unit": "hour", "label": "예상 시간", "criterion": "T06-C07" },
+        "created_at": { "type": "TIMESTAMPTZ", "nullable": false, "default": "now()" },
+        "updated_at": { "type": "TIMESTAMPTZ", "nullable": false, "default": "now()" },
+        "deleted_at": { "type": "TIMESTAMPTZ", "nullable": true }
+      },
+      "constraints": [
+        "CHECK (priority IN ('HIGH','MEDIUM','LOW'))",
+        "CHECK (end_date >= start_date)"
+      ]
+    },
+    "plan_history": {
+      "description": "계획 수정 이력. plans 를 수정하기 직전의 값을 그대로 복사해 쌓는다. 계획 ID 는 그대로 두고 내용만 바뀌므로, 같은 plan_id 로 여러 버전이 쌓인다.",
+      "primaryKey": "history_id",
+      "criterion": "T06-C08",
+      "columns": {
+        "history_id": { "type": "BIGSERIAL", "nullable": false },
+        "plan_id": { "type": "TEXT", "nullable": false, "references": "plans.id", "onDelete": "CASCADE" },
+        "title": { "type": "TEXT", "nullable": false },
+        "start_date": { "type": "DATE", "nullable": false },
+        "end_date": { "type": "DATE", "nullable": false },
+        "priority": { "type": "TEXT", "nullable": false },
+        "success_criteria": { "type": "TEXT", "nullable": false },
+        "estimated_hours": { "type": "NUMERIC(6,2)", "nullable": false, "unit": "hour" },
+        "valid_from": { "type": "TIMESTAMPTZ", "nullable": false, "note": "이 버전이 만들어진 시각 (원본의 updated_at)" },
+        "recorded_at": { "type": "TIMESTAMPTZ", "nullable": false, "default": "now()", "note": "이력으로 밀려난 시각" }
+      }
+    },
+    "tasks": {
+      "description": "할 일. 계획 하나에 여러 개가 딸린다.",
+      "primaryKey": "id",
+      "columns": {
+        "id": { "type": "TEXT", "nullable": false },
+        "plan_id": { "type": "TEXT", "nullable": false, "references": "plans.id", "onDelete": "CASCADE" },
+        "content": { "type": "TEXT", "nullable": false, "label": "할 일 내용", "criterion": "T06-C09, T06-C10" },
+        "due_date": { "type": "DATE", "nullable": true, "label": "마감일", "criterion": "T06-C14" },
+        "priority": { "type": "TEXT", "nullable": false, "enum": ["HIGH", "MEDIUM", "LOW"], "default": "MEDIUM", "label": "우선순위", "criterion": "T06-C15" },
+        "tags": { "type": "TEXT[]", "nullable": false, "default": "{}", "label": "태그", "criterion": "T06-C16", "note": "자유 입력 태그를 배열로 저장. 중복 제거, 최대 20개, 각 40자." },
+        "estimated_hours": { "type": "NUMERIC(6,2)", "nullable": false, "default": 0, "unit": "hour", "label": "예상 시간", "criterion": "T06-C17" },
+        "is_completed": { "type": "BOOLEAN", "nullable": false, "default": false, "criterion": "T06-C11, T06-C12" },
+        "completed_at": { "type": "TIMESTAMPTZ", "nullable": true },
+        "created_at": { "type": "TIMESTAMPTZ", "nullable": false, "default": "now()" },
+        "updated_at": { "type": "TIMESTAMPTZ", "nullable": false, "default": "now()" },
+        "deleted_at": { "type": "TIMESTAMPTZ", "nullable": true, "criterion": "T06-C13" }
+      },
+      "constraints": [
+        "CHECK (priority IN ('HIGH','MEDIUM','LOW'))",
+        "CHECK ((is_completed AND completed_at IS NOT NULL) OR (NOT is_completed AND completed_at IS NULL))"
+      ]
+    },
+    "task_logs": {
+      "description": "실행 기록. 실제로 언제 시작해 얼마나 걸렸고 어디서 막혔는지를 할 일과 별개로 남긴다. 이 표에 쓰더라도 tasks 와 plans 의 계획 값은 건드리지 않는다.",
+      "primaryKey": "id",
+      "criterion": "T06-C23 ~ T06-C27",
+      "columns": {
+        "id": { "type": "TEXT", "nullable": false },
+        "task_id": { "type": "TEXT", "nullable": false, "references": "tasks.id", "onDelete": "CASCADE" },
+        "started_at": { "type": "TIMESTAMPTZ", "nullable": false, "label": "시작 시각", "criterion": "T06-C23" },
+        "ended_at": { "type": "TIMESTAMPTZ", "nullable": false, "label": "끝난 시각", "criterion": "T06-C24" },
+        "actual_hours": { "type": "NUMERIC(6,2)", "nullable": false, "default": 0, "unit": "hour", "label": "실제로 걸린 시간", "criterion": "T06-C25" },
+        "blocker_reason": { "type": "TEXT", "nullable": true, "label": "막혔던 이유", "criterion": "T06-C26" },
+        "idempotency_key": {
+          "type": "TEXT",
+          "nullable": false,
+          "unique": true,
+          "criterion": "T06-C21, T06-C22",
+          "note": "같은 동작을 두 번 보내도 두 번째 INSERT 를 데이터베이스가 UNIQUE 제약으로 거부한다. 버튼 잠금에 의존하지 않는다."
+        },
+        "created_at": { "type": "TIMESTAMPTZ", "nullable": false, "default": "now()" }
+      },
+      "constraints": [
+        "UNIQUE (idempotency_key)",
+        "CHECK (ended_at >= started_at)",
+        "CHECK (actual_hours >= 0)"
+      ]
+    },
+    "retrospectives": {
+      "description": "돌아보기. 기간별 회고와, 다음 계획으로 넘길 고칠 점 한 줄을 담는다.",
+      "primaryKey": "id",
+      "criterion": "T06-C33",
+      "columns": {
+        "id": { "type": "TEXT", "nullable": false },
+        "plan_id": { "type": "TEXT", "nullable": false, "references": "plans.id", "onDelete": "CASCADE" },
+        "period_start": { "type": "DATE", "nullable": false },
+        "period_end": { "type": "DATE", "nullable": false },
+        "status": { "type": "TEXT", "nullable": true, "enum": ["SUCCESS", "PARTIAL", "FAIL"] },
+        "reflection": { "type": "TEXT", "nullable": true },
+        "next_action_item": { "type": "TEXT", "nullable": true, "label": "다음 계획으로 넘길 고칠 점" },
+        "carried_to_plan_id": {
+          "type": "TEXT",
+          "nullable": true,
+          "references": "plans.id",
+          "onDelete": "SET NULL",
+          "note": "이 회고의 고칠 점을 이어받아 만들어진 계획. 넘기기 전에는 NULL."
+        },
+        "created_at": { "type": "TIMESTAMPTZ", "nullable": false, "default": "now()" },
+        "updated_at": { "type": "TIMESTAMPTZ", "nullable": false, "default": "now()" }
+      },
+      "constraints": [
+        "CHECK (status IS NULL OR status IN ('SUCCESS','PARTIAL','FAIL'))",
+        "CHECK (period_end >= period_start)"
+      ]
+    }
+  },
+  "relationships": [
+    { "from": "plan_history.plan_id", "to": "plans.id", "cardinality": "many-to-one", "meaning": "한 계획에 여러 수정 이력" },
+    { "from": "tasks.plan_id", "to": "plans.id", "cardinality": "many-to-one", "meaning": "한 계획에 여러 할 일" },
+    { "from": "task_logs.task_id", "to": "tasks.id", "cardinality": "many-to-one", "meaning": "한 할 일에 여러 실행 기록" },
+    { "from": "retrospectives.plan_id", "to": "plans.id", "cardinality": "many-to-one", "meaning": "한 계획에 여러 돌아보기" },
+    { "from": "retrospectives.carried_to_plan_id", "to": "plans.id", "cardinality": "many-to-one", "meaning": "고칠 점을 이어받아 만들어진 다음 계획" }
+  ],
+  "aggregationRules": {
+    "description": "돌아보기 집계는 아래 정의대로만 센다. 모든 대상은 deleted_at IS NULL 인 행이다.",
+    "planCount": {
+      "criterion": "T06-C28",
+      "rule": "대상 계획에 딸린, 지우지 않은 할 일의 수"
+    },
+    "completedCount": {
+      "criterion": "T06-C29",
+      "rule": "그중 is_completed = true 인 할 일의 수"
+    },
+    "delayedCount": {
+      "criterion": "T06-C30",
+      "rule": "is_completed = false 이고 due_date < (Asia/Seoul 기준 오늘) 인 할 일의 수. 완료한 할 일은 지연으로 세지 않으므로 이중 계수가 생기지 않는다."
+    },
+    "blockedCount": {
+      "criterion": "T06-C31",
+      "rule": "blocker_reason 이 비어 있지 않은 실행 기록을 하나라도 가진 할 일의 수 (기록 수가 아니라 할 일 수를 센다)"
+    },
+    "hours": {
+      "criterion": "T06-C32",
+      "estimated": "대상 할 일의 estimated_hours 합계",
+      "actual": "대상 할 일에 딸린 task_logs 의 actual_hours 합계",
+      "diff": "actual - estimated",
+      "emptyCase": "대상이 없으면 세 값 모두 0",
+      "unit": "hour"
+    },
+    "drillDown": {
+      "criterion": "T06-C83",
+      "rule": "각 집계 숫자는 그 숫자를 이루는 대상의 id 목록을 함께 내려준다. 화면에서 숫자를 누르면 그 id 들에 해당하는 기록으로 이동한다."
+    }
+  },
+  "apiEndpoints": {
+    "GET /api/plans": "계획 목록",
+    "POST /api/plans": "계획 생성 (fromRetrospectiveId 를 주면 그 회고의 고칠 점을 이어받는다)",
+    "PATCH /api/plans?id=": "계획 수정 — 수정 전 값을 plan_history 에 남긴다",
+    "DELETE /api/plans?id=": "계획 삭제 (soft delete)",
+    "GET /api/plans?id=&history=1": "그 계획의 수정 이력",
+    "GET /api/tasks": "할 일 목록 (planId, q 검색, status/priority/tag 필터, sort 정렬)",
+    "POST /api/tasks": "할 일 생성",
+    "PATCH /api/tasks?id=": "할 일 수정 / 완료 / 되돌리기",
+    "DELETE /api/tasks?id=": "할 일 삭제 (soft delete)",
+    "GET /api/task-logs?taskId=": "실행 기록 목록",
+    "POST /api/task-logs": "실행 기록 생성 (idempotencyKey 필수)",
+    "GET /api/retrospectives?planId=": "돌아보기 목록",
+    "POST /api/retrospectives": "돌아보기 저장",
+    "GET /api/summary?planId=": "집계 숫자 + 각 숫자의 근거 id 목록",
+    "GET /api/export": "내 자료 전체를 파일 하나로 내보내기"
+  }
+}

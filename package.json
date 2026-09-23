@@ -1,0 +1,13 @@
+{
+  "name": "plandosee-diary",
+  "version": "2.0.0",
+  "private": true,
+  "description": "플랜두씨(Plan-Do-See) 다이어리 — 계획·할 일·실행 기록·돌아보기를 서버 DB로 잇는 웹 다이어리",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@vercel/postgres": "^0.10.0"
+  }
+}
