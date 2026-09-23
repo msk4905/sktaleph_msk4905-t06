@@ -1,8 +1,7 @@
 -- ============================================================
--- 플랜두씨(Plan-Do-See) 다이어리 — 데이터베이스 스키마 v2
+-- 플랜두씨(Plan-Do-See) 다이어리 — 데이터베이스 스키마
 -- 대상: Vercel Postgres (Neon)
 -- 시간대 규칙: 저장은 UTC(TIMESTAMPTZ), 표시/판정은 Asia/Seoul
--- 실행 방법: Vercel 대시보드 > Storage > Postgres > Query 탭에 붙여넣고 실행
 -- ============================================================
 
 -- ------------------------------------------------------------
@@ -25,8 +24,8 @@ CREATE TABLE IF NOT EXISTS plans (
 
 -- ------------------------------------------------------------
 -- 2. plan_history : 계획 수정 이력 (수정 "전" 값의 스냅샷)
---    T06-C08 — 계획을 고쳐도 고치기 전 계획이 그대로 남는다
---    plans 를 UPDATE 하기 직전에 기존 행을 이 표로 복사한다.
+-- 계획을 고쳐도 고치기 전 계획이 그대로 남는다
+-- plans 를 UPDATE 하기 직전에 기존 행을 이 표로 복사한다.
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS plan_history (
   history_id       BIGSERIAL PRIMARY KEY,
@@ -46,7 +45,6 @@ CREATE INDEX IF NOT EXISTS idx_plan_history_plan_id
 
 -- ------------------------------------------------------------
 -- 3. tasks : 할 일 (계획에 딸림)
---    T06-C09~C20
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS tasks (
   id              TEXT PRIMARY KEY,
@@ -75,8 +73,8 @@ CREATE INDEX IF NOT EXISTS idx_tasks_tags      ON tasks USING GIN (tags);
 
 -- ------------------------------------------------------------
 -- 4. task_logs : 실행 기록 (실제로 한 일, 할 일에 딸림)
---    T06-C23~C27 — 시작/끝 시각, 실제 소요, 막힌 이유
---    T06-C21/C22 — idempotency_key UNIQUE 로 중복 완료를 DB가 막는다
+-- 시작/끝 시각, 실제 소요, 막힌 이유
+-- idempotency_key UNIQUE 로 중복 완료를 DB가 막는다
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS task_logs (
   id              TEXT PRIMARY KEY,
@@ -95,7 +93,7 @@ CREATE INDEX IF NOT EXISTS idx_task_logs_task_id ON task_logs (task_id, created_
 
 -- ------------------------------------------------------------
 -- 5. retrospectives : 돌아보기 (기간별 회고 + 다음 계획으로 넘길 한 줄)
---    T06-C33 — 고칠 점 한 건이 다음 계획으로 넘어간다
+-- 고칠 점 한 건이 다음 계획으로 넘어간다
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS retrospectives (
   id               TEXT PRIMARY KEY,
