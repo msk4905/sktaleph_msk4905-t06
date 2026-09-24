@@ -50,6 +50,7 @@ CREATE INDEX IF NOT EXISTS idx_plan_history_plan_id
 -- (CREATE TABLE IF NOT EXISTS 는 이미 존재하는 테이블의 컬럼을 바꾸지 않는다)
 ALTER TABLE plans ADD COLUMN IF NOT EXISTS content TEXT;
 ALTER TABLE plan_history ADD COLUMN IF NOT EXISTS content TEXT;
+ALTER TABLE task_logs ADD COLUMN IF NOT EXISTS content TEXT;
 
 -- ------------------------------------------------------------
 -- 3. tasks : 할 일 (계획에 딸림)
@@ -88,6 +89,7 @@ CREATE INDEX IF NOT EXISTS idx_tasks_tags      ON tasks USING GIN (tags);
 CREATE TABLE IF NOT EXISTS task_logs (
   id              TEXT PRIMARY KEY,
   task_id         TEXT        NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  content         TEXT,                       -- 실제로 한 일 내용 (자유 설명, 선택)
   started_at      TIMESTAMPTZ NOT NULL,
   ended_at        TIMESTAMPTZ NOT NULL,
   actual_hours    NUMERIC(6,2) NOT NULL DEFAULT 0,

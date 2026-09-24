@@ -65,8 +65,8 @@ async function createLog(req, res) {
   const id = newId('log');
   try {
     await sql`
-      INSERT INTO task_logs (id, task_id, started_at, ended_at, actual_hours, blocker_reason, idempotency_key)
-      VALUES (${id}, ${f.taskId}, ${f.startedAt}, ${f.endedAt}, ${f.actualHours}, ${f.blockerReason}, ${f.idempotencyKey})
+      INSERT INTO task_logs (id, task_id, content, started_at, ended_at, actual_hours, blocker_reason, idempotency_key)
+      VALUES (${id}, ${f.taskId}, ${f.content}, ${f.startedAt}, ${f.endedAt}, ${f.actualHours}, ${f.blockerReason}, ${f.idempotencyKey})
     `;
   } catch (err) {
     // 동시에 두 요청이 들어와 여기서 경합했을 때도 UNIQUE 제약이 최종 방어선이 된다.
@@ -95,6 +95,14 @@ function validateLogFields(body) {
   if (typeof body.taskId !== 'string' || body.taskId.trim() === '') {
     throw new ValidationError('taskId 가 필요합니다.');
   }
+
+  // 실제로 한 일 내용 — 자유 설명, 선택 입력.
+  const contentRaw = body.content;
+  const content =
+    typeof contentRaw === 'string' && contentRaw.trim() !== ''
+      ? contentRaw.trim().slice(0, 2000)
+      : null;
+
   if (!isTimestampString(body.startedAt)) {
     throw new ValidationError('시작 시각(startedAt)이 올바르지 않습니다.');
   }
@@ -120,6 +128,7 @@ function validateLogFields(body) {
 
   return {
     taskId: body.taskId.trim(),
+    content,
     startedAt: new Date(body.startedAt).toISOString(),
     endedAt: new Date(body.endedAt).toISOString(),
     actualHours,
@@ -132,6 +141,7 @@ function mapLogRow(r) {
   return {
     id: r.id,
     taskId: r.task_id,
+    content: r.content ?? null,
     startedAt: r.started_at,
     endedAt: r.ended_at,
     actualHours: Number(r.actual_hours),

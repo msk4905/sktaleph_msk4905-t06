@@ -105,6 +105,7 @@
       "columns": {
         "id": { "type": "TEXT", "nullable": false },
         "task_id": { "type": "TEXT", "nullable": false, "references": "tasks.id", "onDelete": "CASCADE" },
+        "content": { "type": "TEXT", "nullable": true, "label": "실제로 한 일 내용", "note": "자유 설명, 선택 입력" },
         "started_at": { "type": "TIMESTAMPTZ", "nullable": false, "label": "시작 시각", "criterion": "T06-C23" },
         "ended_at": { "type": "TIMESTAMPTZ", "nullable": false, "label": "끝난 시각", "criterion": "T06-C24" },
         "actual_hours": { "type": "NUMERIC(6,2)", "nullable": false, "default": 0, "unit": "hour", "label": "실제로 걸린 시간", "criterion": "T06-C25" },

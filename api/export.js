@@ -46,6 +46,7 @@ function mapPlan(r) {
   return {
     id: r.id,
     title: r.title,
+    content: r.content ?? null,
     startDate: toDateString(r.start_date),
     endDate: toDateString(r.end_date),
     priority: r.priority,
@@ -62,6 +63,7 @@ function mapPlanHistory(r) {
     historyId: Number(r.history_id),
     planId: r.plan_id,
     title: r.title,
+    content: r.content ?? null,
     startDate: toDateString(r.start_date),
     endDate: toDateString(r.end_date),
     priority: r.priority,
@@ -93,6 +95,7 @@ function mapTaskLog(r) {
   return {
     id: r.id,
     taskId: r.task_id,
+    content: r.content ?? null,
     startedAt: r.started_at,
     endedAt: r.ended_at,
     actualHours: Number(r.actual_hours),

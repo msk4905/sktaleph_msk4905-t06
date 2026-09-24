@@ -347,6 +347,10 @@
     <form id="log-form" onsubmit="saveLog(event)">
       <input type="hidden" id="l-task-id">
       <input type="hidden" id="l-key">
+      <div class="fg">
+        <label>무엇을 했나요 <span style="color:var(--danger)">*</span></label>
+        <textarea id="l-content" rows="2" required maxlength="2000" placeholder="예: 파일 업로드 취약점 분석 문서 정독, RCE로 이어지는 공격 시나리오 파악"></textarea>
+      </div>
       <div class="grid">
         <div class="fg"><label>시작 시각 <span style="color:var(--danger)">*</span></label><input type="datetime-local" id="l-start" required></div>
         <div class="fg"><label>끝난 시각 <span style="color:var(--danger)">*</span></label><input type="datetime-local" id="l-end" required></div>
@@ -865,6 +869,7 @@ async function fetchLogs(taskId){
     if(logs.length === 0){ box.innerHTML = '<div style="font-size:.78rem;color:#9ca3af">기록이 없습니다.</div>'; return; }
     box.innerHTML = logs.map(l => `
       <div class="log">
+        ${l.content ? `<div style="font-weight:600;color:#1f2937;margin-bottom:3px">${esc(l.content)}</div>` : ''}
         🕘 ${esc(fmtDateTime(l.startedAt))} → ${esc(fmtDateTime(l.endedAt))}
         · 실제 <b>${Number(l.actualHours)}시간</b>
         ${l.blockerReason ? `<span class="blk">🚧 막힘: ${esc(l.blockerReason)}</span>` : ''}
@@ -894,6 +899,7 @@ function openLogModal(taskId){
   document.getElementById('l-end').value = toLocalInput(now);
   document.getElementById('l-hours').value = 1;
   document.getElementById('l-complete').checked = t ? !t.isCompleted : true;
+  document.getElementById('l-content').value = '';
 
   openModal('log-modal');
 }
@@ -921,6 +927,7 @@ async function saveLog(e){
   const taskId = document.getElementById('l-task-id').value;
   const body = {
     taskId,
+    content: document.getElementById('l-content').value,
     startedAt: new Date(document.getElementById('l-start').value).toISOString(),
     endedAt: new Date(document.getElementById('l-end').value).toISOString(),
     actualHours: parseFloat(document.getElementById('l-hours').value) || 0,
