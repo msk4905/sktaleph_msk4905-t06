@@ -267,7 +267,7 @@
 </div>
 
 <!-- ========== 모달: 계획 ========== -->
-<div class="modal-bg" id="plan-modal" onclick="if(event.target===this)closeModal('plan-modal')">
+<div class="modal-bg" id="plan-modal">
   <div class="modal">
     <h3 id="plan-modal-title">새 계획</h3>
     <div class="msub" id="plan-modal-sub">지금 실제로 하고 있는 일 하나를 계획으로 옮겨 적으세요.</div>
@@ -307,7 +307,7 @@
 </div>
 
 <!-- ========== 모달: 할 일 ========== -->
-<div class="modal-bg" id="task-modal" onclick="if(event.target===this)closeModal('task-modal')">
+<div class="modal-bg" id="task-modal">
   <div class="modal">
     <h3 id="task-modal-title">새 할 일</h3>
     <div class="msub">마감일 · 우선순위 · 태그 · 예상 시간을 함께 남깁니다.</div>
@@ -339,7 +339,7 @@
 </div>
 
 <!-- ========== 모달: 실행 기록 ========== -->
-<div class="modal-bg" id="log-modal" onclick="if(event.target===this)closeModal('log-modal')">
+<div class="modal-bg" id="log-modal">
   <div class="modal">
     <h3 id="log-modal-title">실제로 한 일 기록</h3>
     <div class="msub" id="log-modal-sub"></div>
@@ -898,6 +898,11 @@ function openLogModal(taskId, logId = null){
   document.getElementById('l-task-id').value = taskId;
   document.getElementById('l-id').value = logId || '';
   document.getElementById('log-modal-sub').textContent = t ? `할 일: ${t.content}` : '';
+
+  // "실제로 한 일" 기록이라 미래 시각은 애초에 고를 수 없게 막는다. (서버도 같은 규칙으로 다시 검증한다)
+  const nowLocal = toLocalInput(new Date());
+  document.getElementById('l-start').max = nowLocal;
+  document.getElementById('l-end').max = nowLocal;
 
   const existing = logId ? (state.logsByTask[taskId] || []).find(l => l.id === logId) : null;
 

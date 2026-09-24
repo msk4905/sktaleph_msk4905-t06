@@ -160,6 +160,17 @@ function validateLogFields(body, opts = {}) {
   if (new Date(body.endedAt) < new Date(body.startedAt)) {
     throw new ValidationError('끝난 시각은 시작 시각보다 앞설 수 없습니다.');
   }
+
+  // "실제로 한 일" 기록이므로 아직 일어나지 않은 미래 시각은 넣을 수 없다.
+  // 클라이언트 기기 시계가 서버보다 조금 빠를 수 있어 5분의 여유를 둔다.
+  const CLOCK_SKEW_MS = 5 * 60 * 1000;
+  const nowWithSkew = Date.now() + CLOCK_SKEW_MS;
+  if (new Date(body.startedAt).getTime() > nowWithSkew) {
+    throw new ValidationError('시작 시각은 지금보다 미래일 수 없습니다.');
+  }
+  if (new Date(body.endedAt).getTime() > nowWithSkew) {
+    throw new ValidationError('끝난 시각은 지금보다 미래일 수 없습니다.');
+  }
   const actualHours = requireNonNegativeNumber(body.actualHours ?? 0, '실제로 걸린 시간');
 
   const blockerReasonRaw = body.blockerReason;
