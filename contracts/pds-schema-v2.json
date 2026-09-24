@@ -203,6 +203,8 @@
     "DELETE /api/tasks?id=": "할 일 삭제 (soft delete)",
     "GET /api/task-logs?taskId=": "실행 기록 목록",
     "POST /api/task-logs": "실행 기록 생성 (idempotencyKey 필수)",
+    "PATCH /api/task-logs?id=": "실행 기록 수정 (내용·시작/끝 시각·실제 시간·막힌 이유)",
+    "DELETE /api/task-logs?id=": "실행 기록 삭제",
     "GET /api/retrospectives?planId=": "돌아보기 목록",
     "POST /api/retrospectives": "돌아보기 저장",
     "GET /api/summary?planId=": "집계 숫자 + 각 숫자의 근거 id 목록",

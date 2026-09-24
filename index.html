@@ -341,12 +341,13 @@
 <!-- ========== 모달: 실행 기록 ========== -->
 <div class="modal-bg" id="log-modal" onclick="if(event.target===this)closeModal('log-modal')">
   <div class="modal">
-    <h3>실제로 한 일 기록</h3>
+    <h3 id="log-modal-title">실제로 한 일 기록</h3>
     <div class="msub" id="log-modal-sub"></div>
     <div id="log-modal-err"></div>
     <form id="log-form" onsubmit="saveLog(event)">
       <input type="hidden" id="l-task-id">
       <input type="hidden" id="l-key">
+      <input type="hidden" id="l-id">
       <div class="fg">
         <label>무엇을 했나요 <span style="color:var(--danger)">*</span></label>
         <textarea id="l-content" rows="2" required maxlength="2000" placeholder="예: 파일 업로드 취약점 분석 문서 정독, RCE로 이어지는 공격 시나리오 파악"></textarea>
@@ -366,7 +367,7 @@
         <label>막혔던 이유 (없으면 비워 두세요)</label>
         <textarea id="l-blocker" rows="2" placeholder="예: 시간대 처리 때문에 날짜가 하루 밀려서 원인 찾는 데 오래 걸림"></textarea>
       </div>
-      <div class="fg">
+      <div class="fg" id="l-complete-row">
         <label style="display:flex;align-items:center;gap:6px;font-weight:500">
           <input type="checkbox" id="l-complete" style="width:auto" checked>
           이 기록과 함께 할 일을 완료로 바꾸기
@@ -416,6 +417,7 @@ const state = {
   summary: null,
   retros: [],
   expandedLogs: new Set(),   // 실행 기록을 펼쳐 둔 할 일
+  logsByTask: {},            // taskId -> 마지막으로 불러온 실행 기록 배열 (수정 모달 채우기용)
   drillIds: null,            // 집계 숫자를 눌러 좁혀 본 id 목록
   drillLabel: '',
 };
@@ -866,13 +868,22 @@ async function fetchLogs(taskId){
   try{
     const data = await api(`/api/task-logs?taskId=${encodeURIComponent(taskId)}`);
     const logs = data.logs || [];
+    state.logsByTask[taskId] = logs;
     if(logs.length === 0){ box.innerHTML = '<div style="font-size:.78rem;color:#9ca3af">기록이 없습니다.</div>'; return; }
     box.innerHTML = logs.map(l => `
       <div class="log">
-        ${l.content ? `<div style="font-weight:600;color:#1f2937;margin-bottom:3px">${esc(l.content)}</div>` : ''}
-        🕘 ${esc(fmtDateTime(l.startedAt))} → ${esc(fmtDateTime(l.endedAt))}
-        · 실제 <b>${Number(l.actualHours)}시간</b>
-        ${l.blockerReason ? `<span class="blk">🚧 막힘: ${esc(l.blockerReason)}</span>` : ''}
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+          <div style="flex:1;min-width:0">
+            ${l.content ? `<div style="font-weight:600;color:#1f2937;margin-bottom:3px">${esc(l.content)}</div>` : ''}
+            🕘 ${esc(fmtDateTime(l.startedAt))} → ${esc(fmtDateTime(l.endedAt))}
+            · 실제 <b>${Number(l.actualHours)}시간</b>
+            ${l.blockerReason ? `<span class="blk">🚧 막힘: ${esc(l.blockerReason)}</span>` : ''}
+          </div>
+          <div style="display:flex;gap:4px;flex-shrink:0">
+            <button class="btn-sm" onclick="openLogModal('${esc(l.taskId)}','${esc(l.id)}')">수정</button>
+            <button class="btn-danger" onclick="deleteLog('${esc(l.taskId)}','${esc(l.id)}')">삭제</button>
+          </div>
+        </div>
       </div>
     `).join('');
   }catch(e){
@@ -880,26 +891,45 @@ async function fetchLogs(taskId){
   }
 }
 
-function openLogModal(taskId){
+function openLogModal(taskId, logId = null){
   const t = state.tasks.find(x => x.id === taskId);
   showErr('log-modal-err', '');
   document.getElementById('log-form').reset();
   document.getElementById('l-task-id').value = taskId;
+  document.getElementById('l-id').value = logId || '';
   document.getElementById('log-modal-sub').textContent = t ? `할 일: ${t.content}` : '';
 
-  // 같은 요청을 알아보는 키를 모달을 열 때 한 번만 만든다.
-  // 저장 버튼을 연달아 눌러도 같은 키가 가므로, 두 번째는 데이터베이스가 막는다. (T06-C21)
-  document.getElementById('l-key').value =
-    (crypto.randomUUID ? crypto.randomUUID() : 'k-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+  const existing = logId ? (state.logsByTask[taskId] || []).find(l => l.id === logId) : null;
 
-  // 기본값: 한 시간 전 ~ 지금
-  const now = new Date();
-  const before = new Date(now.getTime() - 3600_000);
-  document.getElementById('l-start').value = toLocalInput(before);
-  document.getElementById('l-end').value = toLocalInput(now);
-  document.getElementById('l-hours').value = 1;
-  document.getElementById('l-complete').checked = t ? !t.isCompleted : true;
-  document.getElementById('l-content').value = '';
+  if(existing){
+    // 수정 모드 — 완료 상태를 이 화면에서 함께 바꾸지 않는다. 완료/되돌리기는 할 일 카드의 버튼으로 한다.
+    document.getElementById('log-modal-title').textContent = '실행 기록 수정';
+    document.getElementById('l-submit').textContent = '수정 저장';
+    document.getElementById('l-complete-row').style.display = 'none';
+    document.getElementById('l-content').value = existing.content || '';
+    document.getElementById('l-start').value = toLocalInput(new Date(existing.startedAt));
+    document.getElementById('l-end').value = toLocalInput(new Date(existing.endedAt));
+    document.getElementById('l-hours').value = existing.actualHours;
+    document.getElementById('l-blocker').value = existing.blockerReason || '';
+  }else{
+    document.getElementById('log-modal-title').textContent = '실제로 한 일 기록';
+    document.getElementById('l-submit').textContent = '기록 저장';
+    document.getElementById('l-complete-row').style.display = '';
+
+    // 같은 요청을 알아보는 키를 모달을 열 때 한 번만 만든다.
+    // 저장 버튼을 연달아 눌러도 같은 키가 가므로, 두 번째는 데이터베이스가 막는다. (T06-C21)
+    document.getElementById('l-key').value =
+      (crypto.randomUUID ? crypto.randomUUID() : 'k-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+
+    // 기본값: 한 시간 전 ~ 지금
+    const now = new Date();
+    const before = new Date(now.getTime() - 3600_000);
+    document.getElementById('l-start').value = toLocalInput(before);
+    document.getElementById('l-end').value = toLocalInput(now);
+    document.getElementById('l-hours').value = 1;
+    document.getElementById('l-complete').checked = t ? !t.isCompleted : true;
+    document.getElementById('l-content').value = '';
+  }
 
   openModal('log-modal');
 }
@@ -925,30 +955,40 @@ async function saveLog(e){
   showErr('log-modal-err', '');
 
   const taskId = document.getElementById('l-task-id').value;
+  const logId = document.getElementById('l-id').value;
+
   const body = {
-    taskId,
     content: document.getElementById('l-content').value,
     startedAt: new Date(document.getElementById('l-start').value).toISOString(),
     endedAt: new Date(document.getElementById('l-end').value).toISOString(),
     actualHours: parseFloat(document.getElementById('l-hours').value) || 0,
     blockerReason: document.getElementById('l-blocker').value.trim() || null,
-    idempotencyKey: document.getElementById('l-key').value,
   };
 
   try{
-    const r = await api('/api/task-logs', {method:'POST', body: JSON.stringify(body)});
-
-    if(r.duplicate){
-      toast('같은 기록이 이미 저장되어 있습니다. 기록은 한 건만 남습니다.');
-    }else{
-      toast('실행 기록을 저장했습니다. 계획 값은 그대로입니다.');
-    }
-
-    // 완료 처리는 별도 요청. 이미 완료면 서버가 다시 쓰지 않는다.
-    if(document.getElementById('l-complete').checked){
-      await api(`/api/tasks?id=${encodeURIComponent(taskId)}`, {
-        method:'PATCH', body: JSON.stringify({action:'complete'})
+    if(logId){
+      // 수정 — idempotency 키는 생성 시점 전용이라 여기선 필요 없다.
+      await api(`/api/task-logs?id=${encodeURIComponent(logId)}`, {
+        method:'PATCH', body: JSON.stringify(body)
       });
+      toast('실행 기록을 고쳤습니다.');
+    }else{
+      body.taskId = taskId;
+      body.idempotencyKey = document.getElementById('l-key').value;
+      const r = await api('/api/task-logs', {method:'POST', body: JSON.stringify(body)});
+
+      if(r.duplicate){
+        toast('같은 기록이 이미 저장되어 있습니다. 기록은 한 건만 남습니다.');
+      }else{
+        toast('실행 기록을 저장했습니다. 계획 값은 그대로입니다.');
+      }
+
+      // 완료 처리는 별도 요청. 이미 완료면 서버가 다시 쓰지 않는다.
+      if(document.getElementById('l-complete').checked){
+        await api(`/api/tasks?id=${encodeURIComponent(taskId)}`, {
+          method:'PATCH', body: JSON.stringify({action:'complete'})
+        });
+      }
     }
 
     closeModal('log-modal');
@@ -959,6 +999,16 @@ async function saveLog(e){
   }finally{
     btn.disabled = false;
   }
+}
+
+async function deleteLog(taskId, logId){
+  if(!confirm('이 실행 기록을 지울까요?')) return;
+  try{
+    await api(`/api/task-logs?id=${encodeURIComponent(logId)}`, {method:'DELETE'});
+    toast('실행 기록을 지웠습니다.');
+    await refreshAfterChange();
+    await fetchLogs(taskId);
+  }catch(e){ toast(e.message, true); }
 }
 
 /* ============================================================

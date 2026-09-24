@@ -17,9 +17,11 @@ export default async function handler(req, res) {
 
   return await handle(res, async () => {
     switch (req.method) {
-      case 'GET':  return await getLogs(req, res);
-      case 'POST': return await createLog(req, res);
-      default:     return methodNotAllowed(res, ['GET', 'POST']);
+      case 'GET':    return await getLogs(req, res);
+      case 'POST':   return await createLog(req, res);
+      case 'PATCH':  return await updateLog(req, res);
+      case 'DELETE': return await deleteLog(req, res);
+      default:       return methodNotAllowed(res, ['GET', 'POST', 'PATCH', 'DELETE']);
     }
   });
 }
@@ -89,10 +91,56 @@ function isUniqueViolation(err) {
 }
 
 // ------------------------------------------------------------
+// PATCH — 수정
+//   idempotency_key 는 건드리지 않는다. 중복 방지는 생성 시점만의 역할이고,
+//   기록을 나중에 고치는 것은 완전히 별개의 정상 동작이다.
+// ------------------------------------------------------------
+async function updateLog(req, res) {
+  const id = req.query.id;
+  if (!id) throw new ValidationError('수정할 실행 기록의 id 가 필요합니다.');
+
+  const body = readBody(req);
+  const f = validateLogFields(body, { requireTaskId: false });
+
+  const { rows: current } = await sql`SELECT * FROM task_logs WHERE id = ${id}`;
+  if (current.length === 0) {
+    return fail(res, 404, 'LOG_NOT_FOUND', '그 실행 기록을 찾을 수 없습니다.');
+  }
+
+  await sql`
+    UPDATE task_logs
+    SET content = ${f.content},
+        started_at = ${f.startedAt},
+        ended_at = ${f.endedAt},
+        actual_hours = ${f.actualHours},
+        blocker_reason = ${f.blockerReason}
+    WHERE id = ${id}
+  `;
+
+  const { rows } = await sql`SELECT * FROM task_logs WHERE id = ${id}`;
+  return ok(res, { log: mapLogRow(rows[0]) });
+}
+
+// ------------------------------------------------------------
+// DELETE — 삭제
+// ------------------------------------------------------------
+async function deleteLog(req, res) {
+  const id = req.query.id;
+  if (!id) throw new ValidationError('삭제할 실행 기록의 id 가 필요합니다.');
+
+  const { rowCount } = await sql`DELETE FROM task_logs WHERE id = ${id}`;
+  if (rowCount === 0) {
+    return fail(res, 404, 'LOG_NOT_FOUND', '그 실행 기록을 찾을 수 없거나 이미 지워졌습니다.');
+  }
+  return ok(res, { deleted: true, id });
+}
+
+// ------------------------------------------------------------
 // 검증 / 매핑
 // ------------------------------------------------------------
-function validateLogFields(body) {
-  if (typeof body.taskId !== 'string' || body.taskId.trim() === '') {
+function validateLogFields(body, opts = {}) {
+  const requireTaskId = opts.requireTaskId !== false;
+  if (requireTaskId && (typeof body.taskId !== 'string' || body.taskId.trim() === '')) {
     throw new ValidationError('taskId 가 필요합니다.');
   }
 
@@ -127,7 +175,7 @@ function validateLogFields(body) {
   }
 
   return {
-    taskId: body.taskId.trim(),
+    taskId: typeof body.taskId === 'string' ? body.taskId.trim() : null,
     content,
     startedAt: new Date(body.startedAt).toISOString(),
     endedAt: new Date(body.endedAt).toISOString(),
