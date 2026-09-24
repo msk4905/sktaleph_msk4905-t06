@@ -93,8 +93,8 @@ async function createPlan(req, res) {
   const id = newId('plan');
 
   await sql`
-    INSERT INTO plans (id, title, start_date, end_date, priority, success_criteria, estimated_hours)
-    VALUES (${id}, ${fields.title}, ${fields.startDate}, ${fields.endDate},
+    INSERT INTO plans (id, title, content, start_date, end_date, priority, success_criteria, estimated_hours)
+    VALUES (${id}, ${fields.title}, ${fields.content}, ${fields.startDate}, ${fields.endDate},
             ${fields.priority}, ${fields.successCriteria}, ${fields.estimatedHours})
   `;
 
@@ -142,9 +142,9 @@ async function updatePlan(req, res) {
   // 1) 수정 "전" 값을 이력으로 복사한다. 계획 ID 는 그대로 두고 내용만 바뀐다.
   await sql`
     INSERT INTO plan_history
-      (plan_id, title, start_date, end_date, priority, success_criteria, estimated_hours, valid_from)
+      (plan_id, title, content, start_date, end_date, priority, success_criteria, estimated_hours, valid_from)
     VALUES
-      (${before.id}, ${before.title}, ${before.start_date}, ${before.end_date},
+      (${before.id}, ${before.title}, ${before.content}, ${before.start_date}, ${before.end_date},
        ${before.priority}, ${before.success_criteria}, ${before.estimated_hours}, ${before.updated_at})
   `;
 
@@ -152,6 +152,7 @@ async function updatePlan(req, res) {
   await sql`
     UPDATE plans
     SET title = ${fields.title},
+        content = ${fields.content},
         start_date = ${fields.startDate},
         end_date = ${fields.endDate},
         priority = ${fields.priority},
@@ -201,6 +202,14 @@ async function deletePlan(req, res) {
 // ------------------------------------------------------------
 function validatePlanFields(body) {
   const title = requireText(body.title, '계획 제목', 200);
+
+  // 계획 내용 — 자유 설명, 성공 기준과는 별개. 선택 입력이라 비어 있으면 NULL.
+  const contentRaw = body.content;
+  const content =
+    typeof contentRaw === 'string' && contentRaw.trim() !== ''
+      ? contentRaw.trim().slice(0, 4000)
+      : null;
+
   const successCriteria = requireText(body.successCriteria, '성공 기준', 1000);
 
   const startDate = body.startDate;
@@ -214,13 +223,14 @@ function validatePlanFields(body) {
 
   const estimatedHours = requireNonNegativeNumber(body.estimatedHours ?? 0, '예상 시간');
 
-  return { title, startDate, endDate, priority, successCriteria, estimatedHours };
+  return { title, content, startDate, endDate, priority, successCriteria, estimatedHours };
 }
 
 function mapPlanRow(r) {
   return {
     id: r.id,
     title: r.title,
+    content: r.content ?? null,
     startDate: toDateString(r.start_date),
     endDate: toDateString(r.end_date),
     priority: r.priority,
@@ -236,6 +246,7 @@ function mapHistoryRow(r) {
     historyId: Number(r.history_id),
     planId: r.plan_id,
     title: r.title,
+    content: r.content ?? null,
     startDate: toDateString(r.start_date),
     endDate: toDateString(r.end_date),
     priority: r.priority,

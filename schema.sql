@@ -1,7 +1,8 @@
 -- ============================================================
--- 플랜두씨(Plan-Do-See) 다이어리 — 데이터베이스 스키마
+-- 플랜두씨(Plan-Do-See) 다이어리 — 데이터베이스 스키마 v2
 -- 대상: Vercel Postgres (Neon)
 -- 시간대 규칙: 저장은 UTC(TIMESTAMPTZ), 표시/판정은 Asia/Seoul
+-- 실행 방법: Vercel 대시보드 > Storage > Postgres > Query 탭에 붙여넣고 실행
 -- ============================================================
 
 -- ------------------------------------------------------------
@@ -10,6 +11,7 @@
 CREATE TABLE IF NOT EXISTS plans (
   id               TEXT PRIMARY KEY,
   title            TEXT        NOT NULL,
+  content          TEXT,                    -- 계획 내용(자유 설명). 성공 기준과는 별개, 선택 입력
   start_date       DATE        NOT NULL,
   end_date         DATE        NOT NULL,
   priority         TEXT        NOT NULL DEFAULT 'MEDIUM',
@@ -24,13 +26,14 @@ CREATE TABLE IF NOT EXISTS plans (
 
 -- ------------------------------------------------------------
 -- 2. plan_history : 계획 수정 이력 (수정 "전" 값의 스냅샷)
--- 계획을 고쳐도 고치기 전 계획이 그대로 남는다
--- plans 를 UPDATE 하기 직전에 기존 행을 이 표로 복사한다.
+--    T06-C08 — 계획을 고쳐도 고치기 전 계획이 그대로 남는다
+--    plans 를 UPDATE 하기 직전에 기존 행을 이 표로 복사한다.
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS plan_history (
   history_id       BIGSERIAL PRIMARY KEY,
   plan_id          TEXT        NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
   title            TEXT        NOT NULL,
+  content          TEXT,
   start_date       DATE        NOT NULL,
   end_date         DATE        NOT NULL,
   priority         TEXT        NOT NULL,
@@ -43,8 +46,14 @@ CREATE TABLE IF NOT EXISTS plan_history (
 CREATE INDEX IF NOT EXISTS idx_plan_history_plan_id
   ON plan_history (plan_id, recorded_at DESC);
 
+-- 이미 만들어진 테이블에 content 컬럼이 없을 수 있으므로 안전하게 추가한다.
+-- (CREATE TABLE IF NOT EXISTS 는 이미 존재하는 테이블의 컬럼을 바꾸지 않는다)
+ALTER TABLE plans ADD COLUMN IF NOT EXISTS content TEXT;
+ALTER TABLE plan_history ADD COLUMN IF NOT EXISTS content TEXT;
+
 -- ------------------------------------------------------------
 -- 3. tasks : 할 일 (계획에 딸림)
+--    T06-C09~C20
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS tasks (
   id              TEXT PRIMARY KEY,
@@ -73,8 +82,8 @@ CREATE INDEX IF NOT EXISTS idx_tasks_tags      ON tasks USING GIN (tags);
 
 -- ------------------------------------------------------------
 -- 4. task_logs : 실행 기록 (실제로 한 일, 할 일에 딸림)
--- 시작/끝 시각, 실제 소요, 막힌 이유
--- idempotency_key UNIQUE 로 중복 완료를 DB가 막는다
+--    T06-C23~C27 — 시작/끝 시각, 실제 소요, 막힌 이유
+--    T06-C21/C22 — idempotency_key UNIQUE 로 중복 완료를 DB가 막는다
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS task_logs (
   id              TEXT PRIMARY KEY,
@@ -93,7 +102,7 @@ CREATE INDEX IF NOT EXISTS idx_task_logs_task_id ON task_logs (task_id, created_
 
 -- ------------------------------------------------------------
 -- 5. retrospectives : 돌아보기 (기간별 회고 + 다음 계획으로 넘길 한 줄)
--- 고칠 점 한 건이 다음 계획으로 넘어간다
+--    T06-C33 — 고칠 점 한 건이 다음 계획으로 넘어간다
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS retrospectives (
   id               TEXT PRIMARY KEY,

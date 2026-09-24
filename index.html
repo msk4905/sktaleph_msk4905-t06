@@ -279,6 +279,10 @@
         <label>계획 제목 <span style="color:var(--danger)">*</span></label>
         <input type="text" id="p-title" required maxlength="200" placeholder="예: ALEPH 과제 6 플랜두씨 다이어리 완성">
       </div>
+      <div class="fg">
+        <label>계획 내용 (자유롭게 설명, 선택)</label>
+        <textarea id="p-content" rows="3" maxlength="4000" placeholder="이 계획이 실제로 무엇인지 자유롭게 적어 두세요. 성공 기준과는 별개로, 배경·범위·이유 등을 적는 칸입니다."></textarea>
+      </div>
       <div class="grid">
         <div class="fg"><label>시작일 <span style="color:var(--danger)">*</span></label><input type="date" id="p-start" required></div>
         <div class="fg"><label>종료일 <span style="color:var(--danger)">*</span></label><input type="date" id="p-end" required></div>
@@ -498,7 +502,8 @@ function renderPlans(){
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
         <div style="flex:1;min-width:0">
           <h3>${esc(p.title)}</h3>
-          <div style="font-size:.84rem;color:#4b5563">🎯 ${esc(p.successCriteria)}</div>
+          ${p.content ? `<div style="font-size:.85rem;color:#374151;white-space:pre-wrap;margin-top:2px">${esc(p.content)}</div>` : ''}
+          <div style="font-size:.84rem;color:#4b5563;margin-top:4px">🎯 ${esc(p.successCriteria)}</div>
           <div class="plan-meta">
             <span>📅 ${esc(p.startDate)} ~ ${esc(p.endDate)}</span>
             <span class="pill p-${esc(p.priority)}">${esc(PRIORITY_LABEL[p.priority] || p.priority)}</span>
@@ -552,6 +557,7 @@ function openPlanModal(id = null, fromRetroId = null){
     document.getElementById('plan-modal-sub').textContent =
       '고치기 전 계획은 수정 이력에 그대로 남습니다.';
     document.getElementById('p-title').value = p.title;
+    document.getElementById('p-content').value = p.content || '';
     document.getElementById('p-start').value = p.startDate;
     document.getElementById('p-end').value = p.endDate;
     document.getElementById('p-priority').value = p.priority;
@@ -581,6 +587,7 @@ async function savePlan(e){
 
   const body = {
     title: document.getElementById('p-title').value,
+    content: document.getElementById('p-content').value,
     startDate: document.getElementById('p-start').value,
     endDate: document.getElementById('p-end').value,
     priority: document.getElementById('p-priority').value,
@@ -636,6 +643,7 @@ async function showHistory(id){
       <div class="hist">
         <div class="when">${esc(String(h.length - i))}번째 이전 버전 · ${esc(fmtDateTime(v.recordedAt))}에 이력으로 남음</div>
         <div style="font-weight:600">${esc(v.title)}</div>
+        ${v.content ? `<div style="font-size:.8rem;color:#374151;white-space:pre-wrap;margin-top:3px">${esc(v.content)}</div>` : ''}
         <div style="color:#4b5563;font-size:.8rem;margin-top:3px">
           📅 ${esc(v.startDate)} ~ ${esc(v.endDate)} ·
           우선순위 ${esc(PRIORITY_LABEL[v.priority] || v.priority)} ·

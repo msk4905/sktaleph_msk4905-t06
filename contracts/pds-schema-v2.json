@@ -36,6 +36,7 @@
       "columns": {
         "id": { "type": "TEXT", "nullable": false },
         "title": { "type": "TEXT", "nullable": false, "label": "계획 제목" },
+        "content": { "type": "TEXT", "nullable": true, "label": "계획 내용", "note": "자유 설명. 성공 기준과는 별개이며 선택 입력." },
         "start_date": { "type": "DATE", "nullable": false, "label": "시작일", "criterion": "T06-C04" },
         "end_date": { "type": "DATE", "nullable": false, "label": "종료일", "criterion": "T06-C04" },
         "priority": {
@@ -65,6 +66,7 @@
         "history_id": { "type": "BIGSERIAL", "nullable": false },
         "plan_id": { "type": "TEXT", "nullable": false, "references": "plans.id", "onDelete": "CASCADE" },
         "title": { "type": "TEXT", "nullable": false },
+        "content": { "type": "TEXT", "nullable": true, "label": "계획 내용" },
         "start_date": { "type": "DATE", "nullable": false },
         "end_date": { "type": "DATE", "nullable": false },
         "priority": { "type": "TEXT", "nullable": false },
