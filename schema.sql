@@ -46,12 +46,6 @@ CREATE TABLE IF NOT EXISTS plan_history (
 CREATE INDEX IF NOT EXISTS idx_plan_history_plan_id
   ON plan_history (plan_id, recorded_at DESC);
 
--- 이미 만들어진 테이블에 content 컬럼이 없을 수 있으므로 안전하게 추가한다.
--- (CREATE TABLE IF NOT EXISTS 는 이미 존재하는 테이블의 컬럼을 바꾸지 않는다)
-ALTER TABLE plans ADD COLUMN IF NOT EXISTS content TEXT;
-ALTER TABLE plan_history ADD COLUMN IF NOT EXISTS content TEXT;
-ALTER TABLE task_logs ADD COLUMN IF NOT EXISTS content TEXT;
-
 -- ------------------------------------------------------------
 -- 3. tasks : 할 일 (계획에 딸림)
 --    T06-C09~C20
@@ -123,3 +117,13 @@ CREATE TABLE IF NOT EXISTS retrospectives (
 );
 
 CREATE INDEX IF NOT EXISTS idx_retro_plan_id ON retrospectives (plan_id, created_at DESC);
+
+-- ------------------------------------------------------------
+-- 이후 추가된 컬럼: 모든 CREATE TABLE 뒤에 둬야 한다.
+-- (task_logs 등 뒤에 정의되는 테이블을 ALTER 하려면, 그 테이블이 먼저 존재해야 하기 때문)
+-- 이미 존재하는 테이블이면 컬럼만 안전하게 추가되고, 새로 만드는 테이블이면
+-- 바로 위 CREATE TABLE 문에 content 컬럼이 이미 포함되어 있어 중복 없이 넘어간다.
+-- ------------------------------------------------------------
+ALTER TABLE plans ADD COLUMN IF NOT EXISTS content TEXT;
+ALTER TABLE plan_history ADD COLUMN IF NOT EXISTS content TEXT;
+ALTER TABLE task_logs ADD COLUMN IF NOT EXISTS content TEXT;
