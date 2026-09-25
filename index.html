@@ -238,6 +238,9 @@
     margin-top:9px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;
     font-size:.82rem;color:var(--good);
   }
+  .retro-actions{display:flex;gap:2px;align-items:center;flex-shrink:0}
+  .retro-actions .btn-sm{padding:3px 8px}
+  .retro-actions .btn-danger-sm{padding:3px 8px}
 
   /* ---------- 모달 ---------- */
   .modal-bg{
@@ -377,6 +380,7 @@
           <div class="retro-form-wrap">
             <h4>회고 남기기</h4>
             <form id="retro-form" onsubmit="saveRetro(event)">
+              <input type="hidden" id="r-id">
               <div class="grid2">
                 <div class="fg">
                   <label>달성 평가</label>
@@ -403,7 +407,10 @@
                 <label>다음 계획으로 넘길 고칠 점 한 줄 <span class="req">*</span></label>
                 <input type="text" id="r-next" required placeholder="예: 조사가 필요한 할 일은 예상 시간을 1.5배로 잡는다">
               </div>
-              <button type="submit" class="btn">돌아보기 저장</button>
+              <div style="display:flex;gap:8px;align-items:center">
+                <button type="submit" class="btn" id="retro-submit-btn">돌아보기 저장</button>
+                <button type="button" class="btn-line" id="retro-cancel-btn" style="display:none" onclick="cancelRetroEdit()">취소</button>
+              </div>
             </form>
           </div>
 
@@ -1280,8 +1287,16 @@ function renderRetros(){
       <h4 style="font-family:var(--font-ui);font-size:.86rem;font-weight:600;color:var(--ink-soft);margin-bottom:4px">지난 돌아보기</h4>
       ${state.retros.map(r => `
         <div class="retro-item">
-          <div class="when">${esc(r.periodStart)} ~ ${esc(r.periodEnd)} · ${esc(fmtDateTime(r.createdAt))}</div>
-          <div class="status">${esc(STATUS[r.status] || r.status || '평가 없음')}</div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+            <div>
+              <div class="when">${esc(r.periodStart)} ~ ${esc(r.periodEnd)} · ${esc(fmtDateTime(r.createdAt))}</div>
+              <div class="status">${esc(STATUS[r.status] || r.status || '평가 없음')}</div>
+            </div>
+            <div class="retro-actions">
+              <button class="btn-sm" type="button" onclick="editRetro('${esc(r.id)}')">수정</button>
+              <button class="btn-danger-sm" type="button" onclick="deleteRetro('${esc(r.id)}')">삭제</button>
+            </div>
+          </div>
           ${r.reflection ? `<div class="reflection">${esc(r.reflection)}</div>` : ''}
           ${r.nextActionItem ? `
             <div class="retro-next">
@@ -1298,6 +1313,8 @@ function renderRetros(){
 
 async function saveRetro(e){
   e.preventDefault();
+
+  const retroId = document.getElementById('r-id').value;
   const body = {
     planId: state.currentPlanId,
     periodStart: document.getElementById('r-start').value,
@@ -1306,13 +1323,77 @@ async function saveRetro(e){
     reflection: document.getElementById('r-reflection').value,
     nextActionItem: document.getElementById('r-next').value,
   };
+
   try{
-    await api('/api/retrospectives', {method:'POST', body: JSON.stringify(body)});
-    toast('돌아보기를 저장했습니다.');
-    document.getElementById('r-reflection').value = '';
-    document.getElementById('r-next').value = '';
+    if(retroId){
+      await api(`/api/retrospectives?id=${encodeURIComponent(retroId)}`, {
+        method:'PATCH',
+        body: JSON.stringify(body)
+      });
+      toast('돌아보기를 수정했습니다.');
+    }else{
+      await api('/api/retrospectives', {
+        method:'POST',
+        body: JSON.stringify(body)
+      });
+      toast('돌아보기를 저장했습니다.');
+    }
+
+    cancelRetroEdit();
     await loadRetros();
-  }catch(err){ toast(err.message, true); }
+  }catch(err){
+    toast(err.message, true);
+  }
+}
+
+function editRetro(retroId){
+  const r = state.retros.find(x => x.id === retroId);
+  if(!r) return;
+
+  document.getElementById('r-id').value = r.id;
+  document.getElementById('r-start').value = r.periodStart || '';
+  document.getElementById('r-end').value = r.periodEnd || '';
+  document.getElementById('r-status').value = r.status || 'PARTIAL';
+  document.getElementById('r-reflection').value = r.reflection || '';
+  document.getElementById('r-next').value = r.nextActionItem || '';
+
+  document.getElementById('retro-submit-btn').textContent = '돌아보기 수정';
+  document.getElementById('retro-cancel-btn').style.display = 'inline-block';
+
+  document.getElementById('retro-form').scrollIntoView({behavior:'smooth', block:'start'});
+  document.getElementById('r-reflection').focus();
+}
+
+function cancelRetroEdit(){
+  document.getElementById('r-id').value = '';
+  document.getElementById('retro-form').reset();
+  document.getElementById('retro-submit-btn').textContent = '돌아보기 저장';
+  document.getElementById('retro-cancel-btn').style.display = 'none';
+
+  // 새 돌아보기 입력의 기본값
+  document.getElementById('r-status').value = 'PARTIAL';
+}
+
+async function deleteRetro(retroId){
+  const r = state.retros.find(x => x.id === retroId);
+  if(!r) return;
+
+  if(!confirm('이 돌아보기를 삭제할까요? 삭제하면 되돌릴 수 없습니다.')) return;
+
+  try{
+    await api(`/api/retrospectives?id=${encodeURIComponent(retroId)}`, {
+      method:'DELETE'
+    });
+
+    if(document.getElementById('r-id').value === retroId){
+      cancelRetroEdit();
+    }
+
+    toast('돌아보기를 삭제했습니다.');
+    await loadRetros();
+  }catch(err){
+    toast(err.message, true);
+  }
 }
 
 /* 돌아보기의 고칠 점을 다음 계획으로 넘긴다 (T06-C33) */

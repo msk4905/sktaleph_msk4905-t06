@@ -16,8 +16,10 @@ export default async function handler(req, res) {
   return await handle(res, async () => {
     switch (req.method) {
       case 'GET':  return await getRetros(req, res);
-      case 'POST': return await createRetro(req, res);
-      default:     return methodNotAllowed(res, ['GET', 'POST']);
+      case 'POST':   return await createRetro(req, res);
+      case 'PATCH':  return await updateRetro(req, res);
+      case 'DELETE': return await deleteRetro(req, res);
+      default:       return methodNotAllowed(res, ['GET', 'POST', 'PATCH', 'DELETE']);
     }
   });
 }
@@ -77,6 +79,71 @@ async function createRetro(req, res) {
 
   const { rows } = await sql`SELECT * FROM retrospectives WHERE id = ${id}`;
   return ok(res, { retrospective: mapRetroRow(rows[0]) }, 201);
+}
+
+
+// ------------------------------------------------------------
+// PATCH — 수정
+// ------------------------------------------------------------
+async function updateRetro(req, res) {
+  const id = requireText(req.query.id, '돌아보기 id', 100);
+  const body = readBody(req);
+
+  const { rows: existing } = await sql`
+    SELECT * FROM retrospectives WHERE id = ${id}
+  `;
+  if (existing.length === 0) {
+    return fail(res, 404, 'RETRO_NOT_FOUND', '돌아보기를 찾을 수 없습니다.');
+  }
+
+  if (!isDateString(body.periodStart)) throw new ValidationError('돌아보는 기간의 시작일이 올바르지 않습니다.');
+  if (!isDateString(body.periodEnd))   throw new ValidationError('돌아보는 기간의 끝일이 올바르지 않습니다.');
+  if (body.periodEnd < body.periodStart) throw new ValidationError('기간의 끝은 시작과 같거나 그 뒤여야 합니다.');
+
+  const status = body.status;
+  if (status != null && !STATUSES.includes(status)) {
+    throw new ValidationError('달성 평가는 SUCCESS, PARTIAL, FAIL 중 하나여야 합니다.');
+  }
+
+  const nextActionItem = requireText(body.nextActionItem, '다음 계획으로 넘길 고칠 점', 500);
+  const reflectionRaw = body.reflection;
+  const reflection =
+    typeof reflectionRaw === 'string' && reflectionRaw.trim() !== ''
+      ? reflectionRaw.trim().slice(0, 2000)
+      : null;
+
+  await sql`
+    UPDATE retrospectives
+    SET period_start = ${body.periodStart},
+        period_end = ${body.periodEnd},
+        status = ${status ?? null},
+        reflection = ${reflection},
+        next_action_item = ${nextActionItem},
+        updated_at = now()
+    WHERE id = ${id}
+  `;
+
+  const { rows } = await sql`SELECT * FROM retrospectives WHERE id = ${id}`;
+  return ok(res, { retrospective: mapRetroRow(rows[0]) });
+}
+
+// ------------------------------------------------------------
+// DELETE — 삭제
+// ------------------------------------------------------------
+async function deleteRetro(req, res) {
+  const id = requireText(req.query.id, '돌아보기 id', 100);
+
+  const { rows } = await sql`
+    DELETE FROM retrospectives
+    WHERE id = ${id}
+    RETURNING id
+  `;
+
+  if (rows.length === 0) {
+    return fail(res, 404, 'RETRO_NOT_FOUND', '돌아보기를 찾을 수 없습니다.');
+  }
+
+  return ok(res, { deleted: true, id });
 }
 
 // ------------------------------------------------------------
